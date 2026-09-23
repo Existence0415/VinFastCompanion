@@ -15,6 +15,35 @@
       radial-gradient(at 50% 85%, rgba(37, 99, 235, 0.05) 0px, transparent 60%);
     background-attachment: fixed;
   }
+
+  /* Fix date input alignment on iOS WebKit / mobile browsers */
+  input[type="date"] {
+    text-align: left !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left !important;
+    padding: 0;
+    margin: 0;
+    min-height: 1.25rem;
+  }
+
+  input[type="date"]::-webkit-datetime-edit {
+    text-align: left !important;
+    padding: 0;
+    margin: 0;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(0.8);
+  }
 }
 
 /* Custom modern scrollbar */

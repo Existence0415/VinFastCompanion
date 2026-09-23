@@ -247,7 +247,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                   {t.fullName} <span className="text-blue-400">*</span>
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     required
@@ -266,7 +266,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                     {t.email} <span className="text-blue-400">*</span>
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       required
@@ -283,7 +283,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                     {t.mobile} <span className="text-blue-400">*</span>
                   </label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="tel"
                       required
@@ -302,7 +302,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                   {t.preferredModel} <span className="text-blue-400">*</span>
                 </label>
                 <div className="relative">
-                  <Car className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Car className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <select
                     value={modelId}
                     onChange={(e) => setModelId(e.target.value)}
@@ -323,7 +323,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                   {t.preferredDealer} <span className="text-blue-400">*</span>
                 </label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <MapPin className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <select
                     value={dealerId}
                     onChange={(e) => setDealerId(e.target.value)}
@@ -351,13 +351,14 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                     {t.preferredDate} <span className="text-blue-400">*</span>
                   </label>
                   <div className="relative">
-                    <Calendar className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Calendar className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="date"
                       required
+                      min={new Date().toISOString().split('T')[0]}
                       value={preferredDate}
                       onChange={(e) => setPreferredDate(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-sm text-white text-left focus:outline-none focus:border-blue-500 [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:m-0 [&::-webkit-date-and-time-value]:p-0 [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit]:p-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert-[0.8]"
                     />
                   </div>
                 </div>
@@ -367,7 +368,7 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
                     {t.preferredTime} <span className="text-blue-400">*</span>
                   </label>
                   <div className="relative">
-                    <Clock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Clock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <select
                       value={preferredTime}
                       onChange={(e) => setPreferredTime(e.target.value)}
