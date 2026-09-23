@@ -138,6 +138,10 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
     q.includes('pila man') ||
     q.includes('palihug') ||
     q.includes('balayran') ||
+    q.includes('pila ang hulog') ||
+    q.includes('pila hulog') ||
+    q.includes('hulogan') ||
+    q.includes('hulog-hulog') ||
     q.includes('salamat kaayo') ||
     q.includes('asa ang showroom') ||
     q.includes('asa dapit') ||
@@ -171,6 +175,9 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
     q.includes('balayran') ||
     q.includes('pila ang balayran') ||
     q.includes('pila ang bili') ||
+    q.includes('pila ang hulog') ||
+    q.includes('pila hulog') ||
+    q.includes('hulogan') ||
     q.includes('luyag') ||
     q.includes('luyag ko') ||
     q.includes('pamangkot') ||
@@ -181,6 +188,17 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
 
   if (isIlonggoSwitch) return { lang: 'ILO', isExplicitSwitch: true };
   if (hasIlonggoWords) return { lang: 'ILO', isExplicitSwitch: false };
+
+  // Japanese Kana Check (Kana is unique to Japanese, while Kanji overlaps with Hanzi)
+  const hasJapaneseChars = /[\u3040-\u30ff]/.test(query);
+  const isJapaneseSwitch =
+    q.includes('japanese') ||
+    q.includes('日本語') ||
+    q.includes('にほんご') ||
+    q.includes('speak japanese') ||
+    q.includes('in japanese');
+
+  if (isJapaneseSwitch || hasJapaneseChars) return { lang: 'JA', isExplicitSwitch: isJapaneseSwitch };
 
   // 3. Chinese / Mandarin
   const isChineseSwitch =
@@ -198,7 +216,7 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
     q.includes('speak chinese') ||
     q.includes('in chinese');
 
-  const hasChineseChars = /[\u4e00-\u9fa5]{2,}/.test(query);
+  const hasChineseChars = /[\u4e00-\u9fa5]{2,}/.test(query) && !hasJapaneseChars;
 
   if (isChineseSwitch) return { lang: 'ZH', isExplicitSwitch: true };
   if (hasChineseChars) return { lang: 'ZH', isExplicitSwitch: false };
@@ -219,23 +237,13 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
     q.includes('buenos dias') ||
     q.includes('buenas tardes') ||
     q.includes('cuanto cuesta') ||
+    q.includes('cuotas') ||
+    q.includes('financiamiento') ||
+    q.includes('pago mensual') ||
     q.includes('prueba de manejo');
 
   if (isSpanishSwitch) return { lang: 'ES', isExplicitSwitch: true };
   if (hasSpanishWords) return { lang: 'ES', isExplicitSwitch: false };
-
-  // 5. Japanese
-  const isJapaneseSwitch =
-    q.includes('japanese') ||
-    q.includes('日本語') ||
-    q.includes('にほんご') ||
-    q.includes('speak japanese') ||
-    q.includes('in japanese');
-
-  const hasJapaneseChars = /[\u3040-\u30ff]{2,}/.test(query);
-
-  if (isJapaneseSwitch) return { lang: 'JA', isExplicitSwitch: true };
-  if (hasJapaneseChars) return { lang: 'JA', isExplicitSwitch: false };
 
   // 6. Korean
   const isKoreanSwitch =
@@ -289,7 +297,7 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
 export interface ConversationContext {
   lastModel?: 'VF 3' | 'VF 5 Plus' | 'VF 6' | 'VF 7' | 'VF 9';
   lastModelId?: 'vf-3' | 'vf-5-plus' | 'vf-6' | 'vf-7' | 'vf-9';
-  lastTopic?: 'pricing' | 'subscription' | 'colors' | 'photos' | 'specs' | 'dealers' | 'test_drive' | 'comparison' | 'savings' | 'general';
+  lastTopic?: 'installment' | 'pricing' | 'subscription' | 'colors' | 'photos' | 'specs' | 'dealers' | 'test_drive' | 'comparison' | 'savings' | 'general';
   lastClosingQuestion?: string;
   repeatModelCount: number;
   repeatTopicCount: number;
@@ -388,6 +396,39 @@ export function detectModelInText(text: string): { model: ConversationContext['l
 }
 
 export function detectTopicInText(text: string): ConversationContext['lastTopic'] | undefined {
+  if (
+    text.includes('installment') ||
+    text.includes('installments') ||
+    text.includes('hulugan') ||
+    text.includes('hulog-hulog') ||
+    text.includes('pila ang hulog') ||
+    text.includes('pila hulog') ||
+    text.includes('magkano ang hulog') ||
+    text.includes('magkano hulog') ||
+    text.includes('buwanang hulog') ||
+    text.includes('binulan nga hulog') ||
+    text.includes('amortization') ||
+    text.includes('monthly payment') ||
+    text.includes('monthly amortization') ||
+    text.includes('monthly installment') ||
+    text.includes('auto loan') ||
+    text.includes('car loan') ||
+    text.includes('bank financing') ||
+    text.includes('loan term') ||
+    text.includes('tenure') ||
+    text.includes('tenor') ||
+    text.includes('interest rate') ||
+    text.includes('cuota') ||
+    text.includes('cuotas') ||
+    text.includes('分期') ||
+    text.includes('首付') ||
+    text.includes('月供') ||
+    text.includes('贷款') ||
+    text.includes('할부') ||
+    text.includes('선수금') ||
+    text.includes('分割払い') ||
+    text.includes('ローン')
+  ) return 'installment';
   if (text.includes('photo') || text.includes('picture') || text.includes('image') || text.includes('litrato') || text.includes('larawan') || text.includes('gallery') || text.includes('图片') || text.includes('写真') || text.includes('사진')) return 'photos';
   if (text.includes('color') || text.includes('kulay') || text.includes('look') || text.includes('paint') || text.includes('kolor') || text.includes('颜色') || text.includes('色') || text.includes('색상')) return 'colors';
   if (text.includes('subscription') || text.includes('lease') || text.includes('rental') || text.includes('baterya') || text.includes('租') || text.includes('구독')) return 'subscription';
@@ -414,6 +455,27 @@ export function isConfusingOrAmbiguous(rawQuery: string): boolean {
     q.includes('presyo') ||
     q.includes('magkano') ||
     q.includes('pila') ||
+    q.includes('installment') ||
+    q.includes('installments') ||
+    q.includes('hulog') ||
+    q.includes('hulugan') ||
+    q.includes('amortization') ||
+    q.includes('financing') ||
+    q.includes('down payment') ||
+    q.includes('downpayment') ||
+    q.includes('auto loan') ||
+    q.includes('car loan') ||
+    q.includes('loan') ||
+    q.includes('cuota') ||
+    q.includes('cuotas') ||
+    q.includes('分期') ||
+    q.includes('首付') ||
+    q.includes('月供') ||
+    q.includes('贷款') ||
+    q.includes('할부') ||
+    q.includes('선수금') ||
+    q.includes('分割払い') ||
+    q.includes('ローン') ||
     q.includes('dealer') ||
     q.includes('showroom') ||
     q.includes('test drive') ||
@@ -487,12 +549,23 @@ export function generateDynamicClosingQuestion(
   const isBisaya = lang === 'CEB';
   const isChinese = lang === 'ZH';
 
-  // 1. If previous topic was pricing and current is colors / photos
-  if (context.lastTopic === 'pricing' && (topic === 'colors' || topic === 'photos')) {
-    if (isTagalog) return `Dahil abot-kaya ang presyo ng ${modelName}, aling kulay ang nais mong makita nang personal sa iyong libreng VIP test drive?`;
-    if (isBisaya) return `Tungod kay abot-kaya kaayo ang presyo sa ${modelName}, unsa nga kolor ang gusto nimong makita sa personal sa imong test drive?`;
-    if (isChinese) return `鉴于 ${modelName} 极具性价比的官方售价，请问您想在到店试驾时亲自鉴赏哪款车身颜色？`;
-    return `Since the ${modelName} offers such an accessible price point, which of these colors would you like to see in person during your VIP test drive?`;
+  // 0. If current topic is installment
+  if (topic === 'installment') {
+    const dText = dealerName ? ` sa ${dealerName}` : '';
+    const dTextEn = dealerName ? ` at ${dealerName}` : '';
+    const dTextZh = dealerName ? `在 ${dealerName}` : '';
+    if (isTagalog) return `Nais mo bang ipag-schedule kita ng libreng VIP test drive para sa ${modelName}${dText} kasama ang on-site bank pre-approval at formal quotation?`;
+    if (isBisaya) return `Gusto ba nimong mag-book og libreng test drive para sa ${modelName} aron makadawat og opisyal nga bank quotation ug on-the-spot approval?`;
+    if (isChinese) return `需要为您预约到店试驾 ${modelName}${dTextZh}，并由官方金融专员现场为您出具正式的分期方案与极速预审吗？`;
+    return `Would you like me to schedule a complimentary VIP test drive in the ${modelName}${dTextEn} along with on-site bank pre-approval and a formal quotation?`;
+  }
+
+  // 1. If previous topic was installment or pricing and current is colors / photos
+  if ((context.lastTopic === 'installment' || context.lastTopic === 'pricing') && (topic === 'colors' || topic === 'photos')) {
+    if (isTagalog) return `Dahil napakagaan at abot-kaya ng buwanang hulog ng ${modelName}, aling kulay ang nais mong makita nang personal sa iyong libreng VIP test drive?`;
+    if (isBisaya) return `Tungod kay abot-kaya kaayo ang binulan nga hulog sa ${modelName}, unsa nga kolor ang gusto nimong makita sa personal sa imong test drive?`;
+    if (isChinese) return `鉴于 ${modelName} 极为亲民的分期月供方案，请问您想在到店试驾时亲自品鉴哪款车身颜色？`;
+    return `Since the ${modelName} offers such accessible monthly installment terms, which of these colors would you like to see in person during your VIP test drive?`;
   }
 
   // 2. If previous topic was colors and current is test drive / dealers
@@ -506,8 +579,8 @@ export function generateDynamicClosingQuestion(
     return `We can arrange to have your preferred color of the ${modelName} prepared for your arrival${dTextEn}. Would you prefer a morning or afternoon slot this weekend for your VIP test drive?`;
   }
 
-  // 3. If previous topic was dealers and current is pricing / financing
-  if (context.lastTopic === 'dealers' && topic === 'pricing') {
+  // 3. If previous topic was dealers and current is installment or pricing
+  if (context.lastTopic === 'dealers' && (topic === 'installment' || topic === 'pricing')) {
     const dText = dealerName ? ` sa ${dealerName}` : ' sa pinakamalapit na showroom';
     const dTextEn = dealerName ? ` at ${dealerName}` : ' at your nearest showroom';
     const dTextZh = dealerName ? `在 ${dealerName}` : '在离您最近的官方展厅';
@@ -699,6 +772,77 @@ function generateMultilingualResponse(
           generateDynamicClosingQuestion('specs', activeModel, context, 'CEB')
         ].join('\n'),
         mediaUrls: [],
+      };
+    }
+
+    // Installment / Financing inquiries in Bisaya
+    const isInstallmentCeb =
+      q.includes('hulog') ||
+      q.includes('installment') ||
+      q.includes('amortization') ||
+      q.includes('down payment') ||
+      q.includes('downpayment') ||
+      q.includes('dp') ||
+      q.includes('loan') ||
+      q.includes('financing') ||
+      q.includes('balayran');
+
+    if (isInstallmentCeb) {
+      const isVf5 = activeModel === 'VF 5 Plus';
+      const sampleBreakdown = isVf5
+        ? [
+            '- VF 5 Plus (Battery Subscription: ₱992,000 | 20% Down: ₱198,400):',
+            '- 36 ka Bulan: ~₱16,400 matag buwan',
+            '- 48 ka Bulan: ~₱13,000 matag buwan',
+            '- 60 ka Bulan: ~₱10,900 matag buwan',
+            '',
+            '- VF 5 Plus (Outright Purchase: ₱1,191,000 | 20% Down: ₱238,200):',
+            '- 36 ka Bulan: ~₱19,800 matag buwan',
+            '- 48 ka Bulan: ~₱15,600 matag buwan',
+            '- 60 ka Bulan: ~₱13,100 matag buwan',
+          ]
+        : [
+            '- VF 3 (Battery Subscription: ₱590,000 | 20% Down: ₱118,000):',
+            '- 36 ka Bulan: ~₱11,800 matag buwan',
+            '- 48 ka Bulan: ~₱9,300 matag buwan',
+            '- 60 ka Bulan: ~₱7,800 matag buwan',
+            '',
+            '- VF 3 (Outright Purchase: ₱745,000 | 20% Down: ₱149,000):',
+            '- 36 ka Bulan: ~₱14,900 matag buwan',
+            '- 48 ka Bulan: ~₱11,800 matag buwan',
+            '- 60 ka Bulan: ~₱9,900 matag buwan',
+          ];
+
+      return {
+        text: [
+          `MGA OPSYON SA HULUGAN UG FINANCING SA VINFAST ${activeModel}`,
+          '',
+          'Naghatag ang VinFast Philippines og sayon ug abot-kaya nga financing pinaagi sa atong mga partner banks (BDO, BPI, Metrobank, Security Bank, RCBC, Maybank):',
+          '',
+          'SAMPOL NGA BINULAN NGA HULOG (20% DOWN PAYMENT / 8.0% ANNUAL RATE)',
+          ...sampleBreakdown,
+          '',
+          'MGA TUNTUNIN SA LOAN',
+          '- Paunang Bayad (Down Payment): 10%, 20%, 30%, o 50%',
+          '- Gidugayon sa Bayad: 12, 24, 36, 48, o 60 ka bulan',
+          '- Paspas nga Pag-apruba: 24 hangtod 48 oras nga bank pre-approval',
+          '- Accredited Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest, PNB',
+          '',
+          'MGA KINAHANGLANON NGA DOKUMENTO',
+          '- Empleyado: 2 ka valid IDs, 3 ka bulan nga payslips, COE, pinakabag-ong ITR 2316, proof of billing',
+          '- Negosyo o Self-Employed: DTI o SEC registration, 6 ka bulan nga bank statements, pinakabag-ong ITR 1701',
+          '- OFW: Balidong passport, POEA kontrata o COE, 3 ka bulan nga remittance slips, lokal nga co-maker',
+          '',
+          'BENTAHE SA BATTERY SUBSCRIPTION',
+          'Pinaagi sa Battery Subscription, mamenosan ang presyo sa sakyanan ug ang down payment og kapin sa 20%, hinungdan nga mas gaan ug mas ubos ang imong binuwan nga hulog.',
+          '',
+          generateDynamicClosingQuestion('installment', activeModel, context, 'CEB')
+        ].join('\n'),
+        mediaUrls: [],
+        quickActions: [
+          { label: 'Kwentahin sa Calculator', action: 'calculate_model', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+          { label: 'Mag-book og Test Drive', action: 'book_test_drive', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+        ]
       };
     }
 
@@ -899,6 +1043,74 @@ function generateMultilingualResponse(
       };
     }
 
+    // Installment / Financing inquiries in Ilonggo
+    const isInstallmentIlo =
+      q.includes('hulog') ||
+      q.includes('installment') ||
+      q.includes('amortization') ||
+      q.includes('down payment') ||
+      q.includes('downpayment') ||
+      q.includes('dp') ||
+      q.includes('loan') ||
+      q.includes('financing') ||
+      q.includes('balayran');
+
+    if (isInstallmentIlo) {
+      const isVf5 = activeModel === 'VF 5 Plus';
+      const sampleBreakdown = isVf5
+        ? [
+            '- VF 5 Plus (Battery Subscription: ₱992,000 | 20% Down: ₱198,400):',
+            '- 36 ka Bulan: ~₱16,400 kada bulan',
+            '- 48 ka Bulan: ~₱13,000 kada bulan',
+            '- 60 ka Bulan: ~₱10,900 kada bulan',
+            '',
+            '- VF 5 Plus (Outright Purchase: ₱1,191,000 | 20% Down: ₱238,200):',
+            '- 36 ka Bulan: ~₱19,800 kada bulan',
+            '- 48 ka Bulan: ~₱15,600 kada bulan',
+            '- 60 ka Bulan: ~₱13,100 kada bulan',
+          ]
+        : [
+            '- VF 3 (Battery Subscription: ₱590,000 | 20% Down: ₱118,000):',
+            '- 36 ka Bulan: ~₱11,800 kada bulan',
+            '- 48 ka Bulan: ~₱9,300 kada bulan',
+            '- 60 ka Bulan: ~₱7,800 kada bulan',
+            '',
+            '- VF 3 (Outright Purchase: ₱745,000 | 20% Down: ₱149,000):',
+            '- 36 ka Bulan: ~₱14,900 kada bulan',
+            '- 48 ka Bulan: ~₱11,800 kada bulan',
+            '- 60 ka Bulan: ~₱9,900 kada bulan',
+          ];
+
+      return {
+        text: [
+          `MGA OPSYON SA HULUGAN KAG FINANCING SANG VINFAST ${activeModel}`,
+          '',
+          'Ang VinFast Philippines nagatanyag sang mahapos kag abot-kaya nga auto financing kaupod ang aton mga partner banks (BDO, BPI, Metrobank, Security Bank, RCBC, Maybank):',
+          '',
+          'SAMPOL NGA BINULAN NGA HULOG (20% DOWN PAYMENT / 8.0% ANNUAL RATE)',
+          ...sampleBreakdown,
+          '',
+          'MGA KONDISYON SA FINANCING',
+          '- Pauna nga Bayad (Down Payment): 10%, 20%, 30%, ukon 50%',
+          '- Kalawigon sang Loan: 12, 24, 36, 48, ukon 60 ka bulan',
+          '- Madasig nga Pag-apruba: 24 tubtob 48 ka oras nga bank pre-approval',
+          '- Accredited Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest, PNB',
+          '',
+          'MGA KINAHANGLANON NGA DOKUMENTO',
+          '- Empleyado: 2 ka balido nga ID, 3 ka bulan nga payslips, COE, ITR 2316, proof of billing',
+          '- Negosyo o Self-Employed: DTI o SEC registration, 6 ka bulan nga bank statements, ITR 1701',
+          '- OFW: Balido nga passport, POEA kontrata o COE, 3 ka bulan nga remittance receipts, lokal nga co-maker',
+          '',
+          'Luyag mo bala mag-iskedyul sang libre nga VIP test drive kag magkuha sang pormal nga bank quotation sa aton pinakamalapit nga showroom?'
+        ].join('\n'),
+        mediaUrls: [],
+        quickActions: [
+          { label: 'Kwentahin sa Calculator', action: 'calculate_model', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+          { label: 'Mag-book sang Test Drive', action: 'book_test_drive', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+        ]
+      };
+    }
+
     if (q.includes('3') || q.includes('vf 3') || q.includes('vf3')) {
       return {
         text: [
@@ -1093,6 +1305,77 @@ function generateMultilingualResponse(
       };
     }
 
+    // Installment / Financing inquiries in Chinese
+    const isInstallmentZh =
+      q.includes('分期') ||
+      q.includes('首付') ||
+      q.includes('月供') ||
+      q.includes('贷款') ||
+      q.includes('银行') ||
+      q.includes('金融') ||
+      q.includes('利率') ||
+      q.includes('installment') ||
+      q.includes('amortization');
+
+    if (isInstallmentZh) {
+      const isVf5 = activeModel === 'VF 5 Plus';
+      const sampleBreakdown = isVf5
+        ? [
+            '- VF 5 Plus（电池租赁方案：₱992,000 | 20% 首付：₱198,400）：',
+            '- 36 期（3年）：约 ₱16,400 / 月',
+            '- 48 期（4年）：约 ₱13,000 / 月',
+            '- 60 期（5年）：约 ₱10,900 / 月',
+            '',
+            '- VF 5 Plus（含电池整车方案：₱1,191,000 | 20% 首付：₱238,200）：',
+            '- 36 期（3年）：约 ₱19,800 / 月',
+            '- 48 期（4年）：约 ₱15,600 / 月',
+            '- 60 期（5年）：约 ₱13,100 / 月',
+          ]
+        : [
+            '- VF 3（电池租赁方案：₱590,000 | 20% 首付：₱118,000）：',
+            '- 36 期（3年）：约 ₱11,800 / 月',
+            '- 48 期（4年）：约 ₱9,300 / 月',
+            '- 60 期（5年）：约 ₱7,800 / 月',
+            '',
+            '- VF 3（含电池整车方案：₱745,000 | 20% 首付：₱149,000）：',
+            '- 36 期（3年）：约 ₱14,900 / 月',
+            '- 48 期（4年）：约 ₱11,800 / 月',
+            '- 60 期（5年）：约 ₱9,900 / 月',
+          ];
+
+      return {
+        text: [
+          `VINFAST ${activeModel} 菲律宾官方银行分期与金融方案`,
+          '',
+          'VinFast 菲律宾携手本地主流合作银行（BDO、BPI、Metrobank、Security Bank、RCBC、Maybank、EastWest 等），为您提供便捷划算的低息分期购车服务：',
+          '',
+          '参考月供测算方案（20% 首付 / 年化约 8.0% 参考利率）',
+          ...sampleBreakdown,
+          '',
+          '灵活金融政策',
+          '- 首付选项：支持 10%、20%、30%、40% 或 50% 首付',
+          '- 还款期限：支持 12、24、36、48 或 60 个月（期）',
+          '- 极速审批：官方销售顾问协助递交，24 至 48 小时极速预审通过',
+          '- 合作银行：BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, PNB',
+          '',
+          '贷款申请所需材料',
+          '- 受薪在职人员：2 份有效政府身份证件、近 3 个月工资单、在职证明（COE）、最新 ITR 2316 税单、居住账单',
+          '- 商业自雇人士：DTI 或 SEC 商业登记执照、近 6 个月银行流水（Bank Statements）、最新 ITR 1701 报税单',
+          '- 海外劳工（OFW）：有效护照、POEA 雇佣合同或在职证明、近 3 个月汇款凭证、菲律宾本地担保人',
+          '',
+          '电池租赁专属红利',
+          '选择官方电池租赁（Battery Subscription）方案可直接大幅降低车辆购买总价，减少首付款支出超 20%，不仅让每月还款更轻松，还享有终身电池健康保障（SOH 低于 70% 免费换新）。',
+          '',
+          generateDynamicClosingQuestion('installment', activeModel, context, 'ZH')
+        ].join('\n'),
+        mediaUrls: [],
+        quickActions: [
+          { label: '使用金融计算器', action: 'calculate_model', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+          { label: '预约 VIP 试驾', action: 'book_test_drive', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+        ]
+      };
+    }
+
     // VF 3 in Chinese
     if (q.includes('3') || q.includes('vf 3') || q.includes('vf3')) {
       const urls = MEDIA_MAP['vf 3'].map(m => m.url);
@@ -1186,7 +1469,58 @@ function generateMultilingualResponse(
   // 4. SPANISH (ES)
   // ----------------------------------------------------
   if (lang === 'ES') {
-    if (isExplicitSwitch || q.includes('hola') || q.includes('espanol') || q.includes('español')) {
+    if (isExplicitSwitch || q.includes('hola') || q.includes('espanol') || q.includes('español') || q.includes('cuota') || q.includes('cuotas') || q.includes('financiamiento')) {
+      if (q.includes('cuota') || q.includes('cuotas') || q.includes('financiamiento') || q.includes('pago mensual') || q.includes('enganche') || q.includes('prestamo') || q.includes('préstamo') || q.includes('banco') || q.includes('installment')) {
+        const isVf5 = activeModel === 'VF 5 Plus';
+        const sampleBreakdown = isVf5
+          ? [
+              '- VF 5 Plus (Suscripción de Batería: ₱992,000 | 20% Enganche: ₱198,400):',
+              '- 36 Meses: ~₱16,400 / mes',
+              '- 48 Meses: ~₱13,000 / mes',
+              '- 60 Meses: ~₱10,900 / mes',
+              '',
+              '- VF 5 Plus (Compra Total: ₱1,191,000 | 20% Enganche: ₱238,200):',
+              '- 36 Meses: ~₱19,800 / mes',
+              '- 48 Meses: ~₱15,600 / mes',
+              '- 60 Meses: ~₱13,100 / mes',
+            ]
+          : [
+              '- VF 3 (Suscripción de Batería: ₱590,000 | 20% Enganche: ₱118,000):',
+              '- 36 Meses: ~₱11,800 / mes',
+              '- 48 Meses: ~₱9,300 / mes',
+              '- 60 Meses: ~₱7,800 / mes',
+              '',
+              '- VF 3 (Compra Total: ₱745,000 | 20% Enganche: ₱149,000):',
+              '- 36 Meses: ~₱14,900 / mes',
+              '- 48 Meses: ~₱11,800 / mes',
+              '- 60 Meses: ~₱9,900 / mes',
+            ];
+
+        return {
+          text: [
+            `PLANES DE FINANCIAMIENTO Y CUOTAS VINFAST ${activeModel}`,
+            '',
+            'VinFast Filipinas ofrece accesibles planes de financiamiento automotriz en alianza con los principales bancos del país (BDO, BPI, Metrobank, Security Bank, RCBC, Maybank):',
+            '',
+            'AMORTIZACIÓN MENSUAL ESTIMADA (20% ENGANCHE / 8.0% TASA INDICATIVA)',
+            ...sampleBreakdown,
+            '',
+            'CONDICIONES DE FINANCIAMIENTO',
+            '- Opciones de Enganche: 10%, 20%, 30%, 40% o 50%',
+            '- Plazos de Pago: 12, 24, 36, 48 o 60 meses',
+            '- Aprobación Rápida: Pre-aprobación bancaria en 24 a 48 horas',
+            '- Requisitos Básicos: 2 identificaciones oficiales vigentes, comprobantes de ingresos de los últimos 3 meses, constancia laboral o ITR, y comprobante de domicilio',
+            '',
+            '¿Le gustaría agendar una prueba de manejo VIP y recibir una cotización formal de financiamiento en su concesionario más cercano?'
+          ].join('\n'),
+          mediaUrls: [],
+          quickActions: [
+            { label: 'Calcular Financiamiento', action: 'calculate_model', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+            { label: 'Agendar Prueba de Manejo', action: 'book_test_drive', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+          ]
+        };
+      }
+
       return {
         text: [
           'HOLA Y BIENVENIDO A VINFAST FILIPINAS',
@@ -1218,7 +1552,58 @@ function generateMultilingualResponse(
   // 5. JAPANESE (JA)
   // ----------------------------------------------------
   if (lang === 'JA') {
-    if (isExplicitSwitch || q.includes('japanese') || q.includes('日本語')) {
+    if (isExplicitSwitch || q.includes('japanese') || q.includes('日本語') || q.includes('ローン') || q.includes('分割') || q.includes('頭金')) {
+      if (q.includes('ローン') || q.includes('分割') || q.includes('頭金') || q.includes('月々') || q.includes('金利') || q.includes('installment')) {
+        const isVf5 = activeModel === 'VF 5 Plus';
+        const sampleBreakdown = isVf5
+          ? [
+              '- VF 5 Plus（バッテリーサブスク：₱992,000 | 頭金20%: ₱198,400）：',
+              '- 36ヶ月（3年）：約 ₱16,400 / 月',
+              '- 48ヶ月（4年）：約 ₱13,000 / 月',
+              '- 60ヶ月（5年）：約 ₱10,900 / 月',
+              '',
+              '- VF 5 Plus（車両一括購入：₱1,191,000 | 頭金20%: ₱238,200）：',
+              '- 36ヶ月（3年）：約 ₱19,800 / 月',
+              '- 48ヶ月（4年）：約 ₱15,600 / 月',
+              '- 60ヶ月（5年）：約 ₱13,100 / 月',
+            ]
+          : [
+              '- VF 3（バッテリーサブスク：₱590,000 | 頭金20%: ₱118,000）：',
+              '- 36ヶ月（3年）：約 ₱11,800 / 月',
+              '- 48ヶ月（4年）：約 ₱9,300 / 月',
+              '- 60ヶ月（5年）：約 ₱7,800 / 月',
+              '',
+              '- VF 3（車両一括購入：₱745,000 | 頭金20%: ₱149,000）：',
+              '- 36ヶ月（3年）：約 ₱14,900 / 月',
+              '- 48ヶ月（4年）：約 ₱11,800 / 月',
+              '- 60ヶ月（5年）：約 ₱9,900 / 月',
+            ];
+
+        return {
+          text: [
+            `VINFAST ${activeModel} フィリピン公式分割払い・ローン試算`,
+            '',
+            'VinFastフィリピンでは、提携大手銀行（BDO、BPI、Metrobank、Security Bank等）を通じて柔軟なオートローンをご利用いただけます：',
+            '',
+            '月々のお支払い目安（頭金20% / 年利約8.0%参考レート）',
+            ...sampleBreakdown,
+            '',
+            'ローン条件と必要書類',
+            '- 頭金オプション：10%、20%、30%、50%',
+            '- 返済期間：12、24、36、48、60ヶ月',
+            '- スピーディーな事前審査：24〜48時間以内に結果をご案内',
+            '- 必要書類：有効な身分証明書2通、直近3ヶ月分の給与明細、在職証明書（COE）、納税証明書（ITR）、公共料金領収書',
+            '',
+            '最寄りのショールームでの無料VIP試乗およびローンお見積もりを作成いたしましょうか？'
+          ].join('\n'),
+          mediaUrls: [],
+          quickActions: [
+            { label: 'ローン計算機を利用', action: 'calculate_model', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+            { label: 'VIP試乗を予約', action: 'book_test_drive', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+          ]
+        };
+      }
+
       return {
         text: [
           'こんにちは！VINFASTフィリピンへようこそ',
@@ -1250,7 +1635,58 @@ function generateMultilingualResponse(
   // 6. KOREAN (KO)
   // ----------------------------------------------------
   if (lang === 'KO') {
-    if (isExplicitSwitch || q.includes('korean') || q.includes('한국어')) {
+    if (isExplicitSwitch || q.includes('korean') || q.includes('한국어') || q.includes('할부') || q.includes('선수금') || q.includes('대출')) {
+      if (q.includes('할부') || q.includes('선수금') || q.includes('월 납입금') || q.includes('대출') || q.includes('금융') || q.includes('installment')) {
+        const isVf5 = activeModel === 'VF 5 Plus';
+        const sampleBreakdown = isVf5
+          ? [
+              '- VF 5 Plus (배터리 구독형: ₱992,000 | 선수금 20%: ₱198,400):',
+              '- 36개월 (3년): 월 약 ₱16,400',
+              '- 48개월 (4년): 월 약 ₱13,000',
+              '- 60개월 (5년): 월 약 ₱10,900',
+              '',
+              '- VF 5 Plus (배터리 포함형: ₱1,191,000 | 선수금 20%: ₱238,200):',
+              '- 36개월 (3년): 월 약 ₱19,800',
+              '- 48개월 (4년): 월 약 ₱15,600',
+              '- 60개월 (5년): 월 약 ₱13,100',
+            ]
+          : [
+              '- VF 3 (배터리 구독형: ₱590,000 | 선수금 20%: ₱118,000):',
+              '- 36개월 (3년): 월 약 ₱11,800',
+              '- 48개월 (4년): 월 약 ₱9,300',
+              '- 60개월 (5년): 월 약 ₱7,800',
+              '',
+              '- VF 3 (배터리 포함형: ₱745,000 | 선수금 20%: ₱149,000):',
+              '- 36개월 (3년): 월 약 ₱14,900',
+              '- 48개월 (4년): 월 약 ₱11,800',
+              '- 60개월 (5년): 월 약 ₱9,900',
+            ];
+
+        return {
+          text: [
+            `VINFAST ${activeModel} 필리핀 공식 금융 할부 프로그램`,
+            '',
+            'VinFast 필리핀은 현지 주요 제휴 은행(BDO, BPI, Metrobank, Security Bank 등)과 협력하여 편리한 자동차 할부 금융을 지원합니다:',
+            '',
+            '월 납입금 예시 (선수금 20% / 연 8.0% 기준금리)',
+            ...sampleBreakdown,
+            '',
+            '금융 조건 및 신청 서류',
+            '- 선수금 선택: 10%, 20%, 30%, 50%',
+            '- 할부 기간: 12, 24, 36, 48, 60개월',
+            '- 신속 심사: 24~48시간 이내 빠른 사전 승인',
+            '- 필요 서류: 유효 신분증 2종, 최근 3개월 급여명세서, 재직증명서(COE), ITR 세금신고서, 거주지 공과금 고지서',
+            '',
+            '가까운 공식 전시장에서 VIP 시승 예약 및 상세 할부 견적을 안내해 드릴까요?'
+          ].join('\n'),
+          mediaUrls: [],
+          quickActions: [
+            { label: '금융 계산기 사용', action: 'calculate_model', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+            { label: 'VIP 시승 예약', action: 'book_test_drive', payload: isVf5 ? 'vf-5-plus' : 'vf-3' },
+          ]
+        };
+      }
+
       return {
         text: [
           '안녕하세요! 빈패스트 필리핀 공식 고객센터입니다',
@@ -1638,6 +2074,396 @@ export function generateSalesResponse(
         ]
       };
     }
+  }
+
+  // 7.5. Installment, auto loan, amortization, and financing inquiries
+  const isInstallmentRequest =
+    q.includes('installment') ||
+    q.includes('installments') ||
+    q.includes('hulugan') ||
+    q.includes('hulog-hulog') ||
+    q.includes('pila ang hulog') ||
+    q.includes('pila hulog') ||
+    q.includes('magkano ang hulog') ||
+    q.includes('magkano hulog') ||
+    q.includes('buwanang hulog') ||
+    q.includes('binulan nga hulog') ||
+    q.includes('amortization') ||
+    q.includes('monthly payment') ||
+    q.includes('monthly amortization') ||
+    q.includes('monthly installment') ||
+    q.includes('monthly plan') ||
+    q.includes('auto loan') ||
+    q.includes('car loan') ||
+    q.includes('bank financing') ||
+    q.includes('loan term') ||
+    q.includes('loan terms') ||
+    q.includes('tenure') ||
+    q.includes('tenor') ||
+    q.includes('interest rate') ||
+    q.includes('down payment') ||
+    q.includes('downpayment') ||
+    q.includes('paunang bayad') ||
+    q.includes('requirements sa hulog') ||
+    q.includes('requirements sa financing') ||
+    q.includes('financing requirements') ||
+    q.includes('loan requirements') ||
+    q.includes('cuota') ||
+    q.includes('cuotas') ||
+    q.includes('分期') ||
+    q.includes('首付') ||
+    q.includes('月供') ||
+    q.includes('贷款') ||
+    q.includes('할부') ||
+    q.includes('선수금') ||
+    q.includes('分割払い') ||
+    q.includes('ローン');
+
+  if (isInstallmentRequest) {
+    const hasSpecificModel = explicitModel !== undefined || context.lastModel !== undefined;
+
+    if (hasSpecificModel) {
+      if (activeModelId === 'vf-3') {
+        const text = isTagalog
+          ? [
+              'MGA OPSYON SA HULUGAN AT FINANCING NG VINFAST VF 3',
+              '',
+              'Narito ang opisyal na buwanang hulog at financing breakdown para sa VinFast VF 3 sa Pilipinas:',
+              '',
+              'SAMPOL NA BUWANANG HULOG (20% DOWN PAYMENT / 8.0% TAUNANG INTERES)',
+              '- May Battery Subscription (SRP: ₱590,000 | 20% Down: ₱118,000):',
+              '- 36 Buwan: ~₱11,800 bawat buwan',
+              '- 48 Buwan: ~₱9,300 bawat buwan',
+              '- 60 Buwan: ~₱7,800 bawat buwan',
+              '',
+              '- Outright Purchase na May Baterya (SRP: ₱745,000 | 20% Down: ₱149,000):',
+              '- 36 Buwan: ~₱14,900 bawat buwan',
+              '- 48 Buwan: ~₱11,800 bawat buwan',
+              '- 60 Buwan: ~₱9,900 bawat buwan',
+              '',
+              'MGA TUNTUNIN SA FINANCING',
+              '- Pagpipiliang Paunang Bayad (Down Payment): 10%, 20%, 30%, 40%, o 50%',
+              '- Tagal ng Pagbabayad (Loan Tenure): 12, 24, 36, 48, o 60 buwan',
+              '- Mga Kasosyong Bangko: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, at PNB',
+              '- Bilis ng Pag-apruba: Mabilis na 24 hanggang 48 oras na bank pre-approval',
+              '',
+              'MGA KINAKAILANGANG DOKUMENTO (REQUIREMENTS)',
+              '- Empleyado: 2 balidong government ID, 3 buwang payslips, Certificate of Employment (COE), pinakabagong ITR 2316, at proof of billing',
+              '- Negosyo o Self-Employed: DTI o SEC registration, 6 na buwang bank statements, at ITR 1701 kasama ang Audited Financial Statements',
+              '- OFW: Balidong passport, POEA kontrata o COE, 3 buwang remittance receipts, at lokal na co-maker',
+              '',
+              'BENTAHE NG BATTERY SUBSCRIPTION',
+              'Sa Battery Subscription, bumababa ang panimulang presyo ng sasakyan mula ₱745,000 patungong ₱590,000. Binabawasan nito ang iyong down payment ng ₱31,000 at pinapababa ang buwanang hulog ng higit 20%, habang sagot ng VinFast ang libreng pagpapalit ng baterya kung bumaba ang battery health sa ilalim ng 70%.',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 3', context, lang)
+            ].join('\n')
+          : [
+              'VINFAST VF 3 INSTALLMENT AND FINANCING OPTIONS',
+              '',
+              'Here is the official monthly amortization breakdown and bank financing parameters for the VinFast VF 3 in the Philippines:',
+              '',
+              'SAMPLE MONTHLY AMORTIZATION (20% DOWN PAYMENT / 8.0% INDICATIVE RATE)',
+              '- With Battery Subscription (SRP: ₱590,000 | 20% Down: ₱118,000):',
+              '- 36 Months: ~₱11,800 per month',
+              '- 48 Months: ~₱9,300 per month',
+              '- 60 Months: ~₱7,800 per month',
+              '',
+              '- Outright Purchase with Battery (SRP: ₱745,000 | 20% Down: ₱149,000):',
+              '- 36 Months: ~₱14,900 per month',
+              '- 48 Months: ~₱11,800 per month',
+              '- 60 Months: ~₱9,900 per month',
+              '',
+              'FLEXIBLE FINANCING PARAMETERS',
+              '- Down Payment Options: 10%, 20%, 30%, 40%, or 50%',
+              '- Available Loan Terms: 12, 24, 36, 48, or 60 months',
+              '- Accredited Partner Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, and PNB',
+              '- Approval Turnaround: Fast-track 24 to 48-hour pre-approval',
+              '',
+              'DOCUMENTARY REQUIREMENTS FOR AUTO LOAN',
+              '- Employed Applicants: 2 valid government-issued IDs, latest 3 months payslips, Certificate of Employment (COE), latest ITR Form 2316, and proof of billing',
+              '- Self-Employed or Business: DTI or SEC registration, latest 6 months bank statements, and latest ITR Form 1701 with Audited Financial Statements',
+              '- Overseas Filipino Workers (OFW): Valid passport, POEA contract or COE, latest 3 months remittance receipts, and Philippine-based co-maker',
+              '',
+              'BATTERY SUBSCRIPTION ADVANTAGE',
+              'Choosing the Battery Subscription reduces your initial vehicle price from ₱745,000 down to ₱590,000. This slashes your 20% down payment by ₱31,000 and decreases monthly loan amortization by over 20%, with VinFast providing a lifetime battery warranty (free replacement if health drops below 70%).',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 3', context, lang)
+            ].join('\n');
+
+        return {
+          text,
+          mediaUrls: [],
+          quickActions: [
+            { label: isTagalog ? 'Kwentahin sa Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: 'vf-3' },
+            { label: isTagalog ? 'I-test Drive ang VF 3' : 'Test Drive VF 3', action: 'book_test_drive', payload: 'vf-3' },
+            { label: isTagalog ? 'Tingnan ang mga Dealer' : 'Find Nearest Dealer', action: 'view_dealer' },
+          ]
+        };
+      }
+
+      if (activeModelId === 'vf-5-plus') {
+        const text = isTagalog
+          ? [
+              'MGA OPSYON SA HULUGAN AT FINANCING NG VINFAST VF 5 PLUS',
+              '',
+              'Narito ang opisyal na buwanang hulog at financing breakdown para sa VinFast VF 5 Plus sa Pilipinas:',
+              '',
+              'SAMPOL NA BUWANANG HULOG (20% DOWN PAYMENT / 8.0% TAUNANG INTERES)',
+              '- May Battery Subscription (SRP: ₱992,000 | 20% Down: ₱198,400):',
+              '- 36 Buwan: ~₱16,400 bawat buwan',
+              '- 48 Buwan: ~₱13,000 bawat buwan',
+              '- 60 Buwan: ~₱10,900 bawat buwan',
+              '',
+              '- Outright Purchase na May Baterya (SRP: ₱1,191,000 | 20% Down: ₱238,200):',
+              '- 36 Buwan: ~₱19,800 bawat buwan',
+              '- 48 Buwan: ~₱15,600 bawat buwan',
+              '- 60 Buwan: ~₱13,100 bawat buwan',
+              '',
+              'MGA TUNTUNIN SA FINANCING',
+              '- Pagpipiliang Paunang Bayad (Down Payment): 10%, 20%, 30%, 40%, o 50%',
+              '- Tagal ng Pagbabayad (Loan Tenure): 12, 24, 36, 48, o 60 buwan',
+              '- Mga Kasosyong Bangko: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, at PNB',
+              '- Bilis ng Pag-apruba: Mabilis na 24 hanggang 48 oras na bank pre-approval',
+              '',
+              'MGA KINAKAILANGANG DOKUMENTO (REQUIREMENTS)',
+              '- Empleyado: 2 balidong government ID, 3 buwang payslips, Certificate of Employment (COE), pinakabagong ITR 2316, at proof of billing',
+              '- Negosyo o Self-Employed: DTI o SEC registration, 6 na buwang bank statements, at ITR 1701 kasama ang Audited Financial Statements',
+              '- OFW: Balidong passport, POEA kontrata o COE, 3 buwang remittance receipts, at lokal na co-maker',
+              '',
+              'BENTAHE NG BATTERY SUBSCRIPTION',
+              'Sa Battery Subscription, bumababa ang presyo mula ₱1,191,000 patungong ₱992,000, kaya mas mababa ang panimulang down payment ng ₱39,800 at mas magaan ang buwanang hulog, kalakip ang 7 taon o 160,000 km na komprehensibong warranty.',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 5 Plus', context, lang)
+            ].join('\n')
+          : [
+              'VINFAST VF 5 PLUS INSTALLMENT AND FINANCING OPTIONS',
+              '',
+              'Here is the official monthly amortization breakdown and bank financing parameters for the VinFast VF 5 Plus:',
+              '',
+              'SAMPLE MONTHLY AMORTIZATION (20% DOWN PAYMENT / 8.0% INDICATIVE RATE)',
+              '- With Battery Subscription (SRP: ₱992,000 | 20% Down: ₱198,400):',
+              '- 36 Months: ~₱16,400 per month',
+              '- 48 Months: ~₱13,000 per month',
+              '- 60 Months: ~₱10,900 per month',
+              '',
+              '- Outright Purchase with Battery (SRP: ₱1,191,000 | 20% Down: ₱238,200):',
+              '- 36 Months: ~₱19,800 per month',
+              '- 48 Months: ~₱15,600 per month',
+              '- 60 Months: ~₱13,100 per month',
+              '',
+              'FLEXIBLE FINANCING PARAMETERS',
+              '- Down Payment Options: 10%, 20%, 30%, 40%, or 50%',
+              '- Available Loan Terms: 12, 24, 36, 48, or 60 months',
+              '- Accredited Partner Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, and PNB',
+              '- Approval Turnaround: Fast-track 24 to 48-hour pre-approval',
+              '',
+              'DOCUMENTARY REQUIREMENTS FOR AUTO LOAN',
+              '- Employed Applicants: 2 valid government-issued IDs, latest 3 months payslips, Certificate of Employment (COE), latest ITR Form 2316, and proof of billing',
+              '- Self-Employed or Business: DTI or SEC registration, latest 6 months bank statements, and latest ITR Form 1701 with Audited Financial Statements',
+              '- Overseas Filipino Workers (OFW): Valid passport, POEA contract or COE, latest 3 months remittance receipts, and Philippine-based co-maker',
+              '',
+              'BATTERY SUBSCRIPTION ADVANTAGE',
+              'Opting for the Battery Subscription lowers the purchase price from ₱1,191,000 down to ₱992,000, significantly reducing your upfront cash out by ₱39,800 and your monthly loan amortizations, backed by VinFast\'s 7-year or 160,000 km warranty.',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 5 Plus', context, lang)
+            ].join('\n');
+
+        return {
+          text,
+          mediaUrls: [],
+          quickActions: [
+            { label: isTagalog ? 'Kwentahin sa Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: 'vf-5-plus' },
+            { label: isTagalog ? 'I-test Drive ang VF 5 Plus' : 'Test Drive VF 5 Plus', action: 'book_test_drive', payload: 'vf-5-plus' },
+            { label: isTagalog ? 'Tingnan ang mga Dealer' : 'Find Nearest Dealer', action: 'view_dealer' },
+          ]
+        };
+      }
+
+      if (activeModelId === 'vf-6') {
+        const text = isTagalog
+          ? [
+              'MGA OPSYON SA HULUGAN AT FINANCING NG VINFAST VF 6',
+              '',
+              'Narito ang opisyal na buwanang hulog at financing breakdown para sa VinFast VF 6:',
+              '',
+              'SAMPOL NA BUWANANG HULOG (20% DOWN PAYMENT / 60 BUWAN)',
+              '- VF 6 Eco (SRP: ₱1,499,000 | 20% Down: ₱299,800): ~₱16,500 bawat buwan',
+              '- VF 6 Plus (SRP: ₱1,699,000 | 20% Down: ₱339,800): ~₱18,700 bawat buwan',
+              '',
+              'MGA TUNTUNIN SA FINANCING',
+              '- Pagpipiliang Down Payment: 10%, 20%, 30%, 40%, o 50%',
+              '- Tagal ng Loan: 12, 24, 36, 48, o 60 buwan',
+              '- Mga Kasosyong Bangko: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, at PNB',
+              '- Mabilis na Pag-apruba: 24 hanggang 48 oras na pre-approval',
+              '',
+              'MGA KINAKAILANGANG DOKUMENTO (REQUIREMENTS)',
+              '- Empleyado: 2 balidong ID, 3 buwang payslips, COE, ITR 2316, at proof of billing',
+              '- Self-Employed: DTI/SEC registration, 6 na buwang bank statements, at ITR 1701',
+              '- OFW: Passport, POEA kontrata o COE, 3 buwang remittance slips, at lokal na co-maker',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 6', context, lang)
+            ].join('\n')
+          : [
+              'VINFAST VF 6 INSTALLMENT AND FINANCING OPTIONS',
+              '',
+              'Here is the official monthly amortization breakdown and bank financing parameters for the VinFast VF 6:',
+              '',
+              'SAMPLE MONTHLY AMORTIZATION (20% DOWN PAYMENT / 60 MONTHS TERM)',
+              '- VF 6 Eco (SRP: ₱1,499,000 | 20% Down: ₱299,800): ~₱16,500 per month',
+              '- VF 6 Plus (SRP: ₱1,699,000 | 20% Down: ₱339,800): ~₱18,700 per month',
+              '',
+              'FLEXIBLE FINANCING PARAMETERS',
+              '- Down Payment Options: 10%, 20%, 30%, 40%, or 50%',
+              '- Available Loan Terms: 12, 24, 36, 48, or 60 months',
+              '- Accredited Partner Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, and PNB',
+              '- Approval Turnaround: Fast-track 24 to 48-hour pre-approval',
+              '',
+              'DOCUMENTARY REQUIREMENTS FOR AUTO LOAN',
+              '- Employed Applicants: 2 valid IDs, latest 3 months payslips, COE, latest ITR Form 2316, and proof of billing',
+              '- Self-Employed or Business: DTI or SEC registration, latest 6 months bank statements, and latest ITR Form 1701',
+              '- Overseas Filipino Workers (OFW): Valid passport, POEA contract or COE, latest 3 months remittance receipts, and co-maker',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 6', context, lang)
+            ].join('\n');
+
+        return {
+          text,
+          mediaUrls: [],
+          quickActions: [
+            { label: isTagalog ? 'Kwentahin sa Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: 'vf-6' },
+            { label: isTagalog ? 'I-test Drive ang VF 6' : 'Test Drive VF 6', action: 'book_test_drive', payload: 'vf-6' },
+          ]
+        };
+      }
+
+      if (activeModelId === 'vf-7') {
+        const text = isTagalog
+          ? [
+              'MGA OPSYON SA HULUGAN AT FINANCING NG VINFAST VF 7',
+              '',
+              'Narito ang opisyal na buwanang hulog at financing breakdown para sa high-performance VinFast VF 7:',
+              '',
+              'SAMPOL NA BUWANANG HULOG (20% DOWN PAYMENT / 60 BUWAN)',
+              '- VF 7 Eco (SRP: ₱1,760,000 | 20% Down: ₱352,000): ~₱19,400 bawat buwan',
+              '- VF 7 Plus AWD (SRP: ₱2,380,000 | 20% Down: ₱476,000): ~₱26,200 bawat buwan',
+              '',
+              'MGA TUNTUNIN SA FINANCING',
+              '- Pagpipiliang Down Payment: 10%, 20%, 30%, 40%, o 50%',
+              '- Tagal ng Loan: 12, 24, 36, 48, o 60 buwan',
+              '- Mga Kasosyong Bangko: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, at PNB',
+              '- Mabilis na Pag-apruba: 24 hanggang 48 oras na pre-approval',
+              '',
+              'MGA KINAKAILANGANG DOKUMENTO (REQUIREMENTS)',
+              '- Empleyado: 2 balidong ID, 3 buwang payslips, COE, ITR 2316, at proof of billing',
+              '- Self-Employed: DTI/SEC registration, 6 na buwang bank statements, at ITR 1701',
+              '- OFW: Passport, POEA kontrata o COE, 3 buwang remittance slips, at lokal na co-maker',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 7', context, lang)
+            ].join('\n')
+          : [
+              'VINFAST VF 7 INSTALLMENT AND FINANCING OPTIONS',
+              '',
+              'Here is the official monthly amortization breakdown and bank financing parameters for the high-performance VinFast VF 7:',
+              '',
+              'SAMPLE MONTHLY AMORTIZATION (20% DOWN PAYMENT / 60 MONTHS TERM)',
+              '- VF 7 Eco (SRP: ₱1,760,000 | 20% Down: ₱352,000): ~₱19,400 per month',
+              '- VF 7 Plus AWD (SRP: ₱2,380,000 | 20% Down: ₱476,000): ~₱26,200 per month',
+              '',
+              'FLEXIBLE FINANCING PARAMETERS',
+              '- Down Payment Options: 10%, 20%, 30%, 40%, or 50%',
+              '- Available Loan Terms: 12, 24, 36, 48, or 60 months',
+              '- Accredited Partner Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, and PNB',
+              '- Approval Turnaround: Fast-track 24 to 48-hour pre-approval',
+              '',
+              'DOCUMENTARY REQUIREMENTS FOR AUTO LOAN',
+              '- Employed Applicants: 2 valid IDs, latest 3 months payslips, COE, latest ITR Form 2316, and proof of billing',
+              '- Self-Employed or Business: DTI or SEC registration, latest 6 months bank statements, and latest ITR Form 1701',
+              '- Overseas Filipino Workers (OFW): Valid passport, POEA contract or COE, latest 3 months remittance receipts, and co-maker',
+              '',
+              generateDynamicClosingQuestion('installment', 'VF 7', context, lang)
+            ].join('\n');
+
+        return {
+          text,
+          mediaUrls: [],
+          quickActions: [
+            { label: isTagalog ? 'Kwentahin sa Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: 'vf-7' },
+            { label: isTagalog ? 'I-test Drive ang VF 7' : 'Test Drive VF 7', action: 'book_test_drive', payload: 'vf-7' },
+          ]
+        };
+      }
+    }
+
+    // General installment inquiries across all models
+    const text = isTagalog
+      ? [
+          'MGA PLANO SA HULUGAN AT AUTO LOAN NG VINFAST PHILIPPINES',
+          '',
+          'Nag-aalok ang VinFast Philippines ng mga magagaan at fleksibleng financing programs para sa ating 100% electric vehicle lineup katuwang ang mga nangungunang bangko sa bansa:',
+          '',
+          'TINATAYANG BUWANANG HULOG (20% DOWN PAYMENT / 60 BUWAN)',
+          '- VF 3 (Battery Subscription: ₱590,000): ~₱7,800 bawat buwan (20% Down: ₱118,000)',
+          '- VF 3 (Outright Purchase: ₱745,000): ~₱9,900 bawat buwan (20% Down: ₱149,000)',
+          '- VF 5 Plus (Battery Subscription: ₱992,000): ~₱10,900 bawat buwan (20% Down: ₱198,400)',
+          '- VF 5 Plus (Outright Purchase: ₱1,191,000): ~₱13,100 bawat buwan (20% Down: ₱238,200)',
+          '- VF 6 Eco (Outright Purchase: ₱1,499,000): ~₱16,500 bawat buwan (20% Down: ₱299,800)',
+          '- VF 7 Eco (Outright Purchase: ₱1,760,000): ~₱19,400 bawat buwan (20% Down: ₱352,000)',
+          '',
+          'MGA TUNTUNIN SA FINANCING',
+          '- Paunang Bayad (Down Payment): 10%, 20%, 30%, 40%, o 50%',
+          '- Tagal ng Pagbabayad (Loan Tenure): 12, 24, 36, 48, o 60 buwan',
+          '- Mga Kasosyong Bangko: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, at PNB',
+          '- Bilis ng Pag-apruba: 24 hanggang 48 oras na pre-approval kasama ang aming finance specialists',
+          '',
+          'MGA KINAKAILANGANG DOKUMENTO (REQUIREMENTS)',
+          '- Empleyado: 2 balidong government ID, 3 buwang payslips, Certificate of Employment (COE), ITR 2316, at proof of billing',
+          '- Negosyo o Self-Employed: DTI o SEC registration, 6 na buwang bank statements, at ITR 1701',
+          '- OFW: Balidong passport, POEA kontrata o COE, 3 buwang remittance receipts, at lokal na co-maker',
+          '',
+          'EVIDA LAW AT MGA DISKWENTO',
+          'Lahat ng VinFast electric vehicles ay 100% libre sa excise tax sa ilalim ng Philippine EVIDA Law (RA 11697), kaya mas mababa ang kabuuang presyo at mas magaan ang buwanang hulog kumpara sa mga sasakyang de-gasolina.',
+          '',
+          generateDynamicClosingQuestion('installment', 'VF 3', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST PHILIPPINES AUTO LOAN AND INSTALLMENT PLANS',
+          '',
+          'VinFast Philippines offers flexible bank financing and installment programs across our entire 100% electric lineup in partnership with major national banks:',
+          '',
+          'ESTIMATED MONTHLY AMORTIZATION (20% DOWN PAYMENT / 60 MONTHS TERM)',
+          '- VF 3 (Battery Subscription: ₱590,000): ~₱7,800 / month (20% Down: ₱118,000)',
+          '- VF 3 (Outright Purchase: ₱745,000): ~₱9,900 / month (20% Down: ₱149,000)',
+          '- VF 5 Plus (Battery Subscription: ₱992,000): ~₱10,900 / month (20% Down: ₱198,400)',
+          '- VF 5 Plus (Outright Purchase: ₱1,191,000): ~₱13,100 / month (20% Down: ₱238,200)',
+          '- VF 6 Eco (Outright Purchase: ₱1,499,000): ~₱16,500 / month (20% Down: ₱299,800)',
+          '- VF 7 Eco (Outright Purchase: ₱1,760,000): ~₱19,400 / month (20% Down: ₱352,000)',
+          '',
+          'FLEXIBLE FINANCING TERMS',
+          '- Down Payment Options: 10%, 20%, 30%, 40%, or 50%',
+          '- Available Loan Terms: 12, 24, 36, 48, or 60 months',
+          '- Accredited Partner Banks: BDO, BPI, Metrobank, Security Bank, RCBC, Maybank, EastWest Bank, and PNB',
+          '- Fast-Track Approvals: 24 to 48-hour pre-approval turnaround',
+          '',
+          'DOCUMENTARY REQUIREMENTS FOR AUTO LOAN',
+          '- Employed Applicants: 2 valid government-issued IDs, latest 3 months payslips, Certificate of Employment (COE), latest ITR Form 2316, and proof of billing',
+          '- Self-Employed or Business: DTI or SEC registration, latest 6 months bank statements, and latest ITR Form 1701 with Audited Financial Statements',
+          '- Overseas Filipino Workers (OFW): Valid passport, POEA contract or COE, latest 3 months remittance receipts, and Philippine-based co-maker',
+          '',
+          'EVIDA LAW TAX SAVINGS',
+          'All VinFast electric vehicles are 100% exempt from excise taxes under the Philippine EVIDA Law (RA 11697), keeping vehicle prices and monthly amortizations substantially lower than comparable gasoline models.',
+          '',
+          generateDynamicClosingQuestion('installment', 'VF 3', context, lang)
+        ].join('\n');
+
+    return {
+      text,
+      mediaUrls: [],
+      quickActions: [
+        { label: isTagalog ? 'Kwentahin sa Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: activeModelId },
+        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive', payload: activeModelId },
+        { label: isTagalog ? 'Hanapin ang Dealer' : 'Find Nearest Dealer', action: 'view_dealer' },
+      ]
+    };
   }
 
   // 8. Model-specific overview (VF 3, VF 5 Plus, VF 6, VF 7, VF 9) with Anti-Repetition
