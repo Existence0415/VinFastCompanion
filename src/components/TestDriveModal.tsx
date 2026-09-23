@@ -138,19 +138,19 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="relative w-full max-w-xl bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
+      <div className="relative w-full max-w-xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="p-6 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md">
+        <div className="p-4 sm:p-6 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md shrink-0">
               <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
                 {submittedBooking ? t.titleConfirmed : t.titleNew}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate">
                 {submittedBooking ? t.subtitleConfirmed : t.subtitleNew}
               </p>
             </div>
@@ -159,14 +159,14 @@ export const TestDriveModal: React.FC<TestDriveModalProps> = ({
           <button
             type="button"
             onClick={handleReset}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {submittedBooking ? (
             /* Confirmation View */
             <div className="space-y-6 text-center">

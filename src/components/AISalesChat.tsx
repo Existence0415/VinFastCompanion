@@ -217,40 +217,40 @@ export const AISalesChat = ({
         id="ai-specialist"
         data-testid="ai-specialist-modal"
         onClick={onClose}
-        className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+        className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 cursor-pointer"
       >
         <div
           id="ai-assistant"
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col cursor-default"
+          className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[94vh] sm:max-h-[90vh] flex flex-col cursor-default"
         >
           {/* Header Bar */}
-          <div className="p-4 sm:p-5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className="relative">
-              <div className="w-11 h-11 rounded-2xl bg-white p-1 shadow-lg shadow-blue-500/25 flex items-center justify-center overflow-hidden border border-slate-700/50">
+          <div className="p-3 sm:p-5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white p-1 shadow-lg shadow-blue-500/25 flex items-center justify-center overflow-hidden border border-slate-700/50">
                 <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-950 shadow-sm" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-slate-950 shadow-sm" />
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="text-sm sm:text-lg font-bold text-white tracking-tight truncate">
                   {t.agentTitle}
                 </h3>
-                <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   {t.agentBadge}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate">
                 {t.agentSubtitle}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
               <span className="w-2 h-2 rounded-full bg-blue-500" />
               <span>{t.connectedDealers}</span>
@@ -259,7 +259,7 @@ export const AISalesChat = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -267,8 +267,8 @@ export const AISalesChat = ({
         </div>
 
           {/* Quick Reply Suggestion Chips */}
-          <div className="px-4 py-2.5 bg-slate-950/60 border-b border-slate-800/60 overflow-x-auto flex items-center gap-2 no-scrollbar">
-            <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider shrink-0 flex items-center gap-1">
+          <div className="px-3 py-2 sm:px-4 sm:py-2.5 bg-slate-950/60 border-b border-slate-800/60 overflow-x-auto flex items-center gap-1.5 sm:gap-2 no-scrollbar">
+            <span className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase tracking-wider shrink-0 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-blue-400" />
               {t.suggestedLabel}
             </span>
@@ -277,7 +277,7 @@ export const AISalesChat = ({
                 key={chip}
                 type="button"
                 onClick={() => handleSendMessage(chip)}
-                className="shrink-0 text-xs px-3 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-blue-500/50 transition-all flex items-center gap-1"
+                className="shrink-0 text-[11px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-blue-500/50 transition-all flex items-center gap-1"
               >
                 <span>{chip}</span>
                 <ChevronRight className="w-3 h-3 text-slate-500" />
@@ -286,7 +286,7 @@ export const AISalesChat = ({
           </div>
 
           {/* Chat Messages Log */}
-          <div className="p-4 sm:p-6 space-y-4 max-h-[560px] min-h-[380px] overflow-y-auto">
+          <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[560px] min-h-[300px] sm:min-h-[380px] overflow-y-auto">
             {messages.map((msg) => {
               const isAssistant = msg.sender === 'assistant';
               return (
@@ -295,18 +295,18 @@ export const AISalesChat = ({
                   className={`flex ${isAssistant ? 'justify-start' : 'justify-end'}`}
                 >
                   <div
-                    className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 sm:p-5 transition-all ${
+                    className={`max-w-[92%] sm:max-w-[80%] rounded-2xl p-3.5 sm:p-5 transition-all text-xs sm:text-sm ${
                       isAssistant
                         ? 'bg-slate-900/95 text-slate-100 border border-slate-800 shadow-md'
                         : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
                     }`}
                   >
                     {/* Message Header */}
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2 gap-4">
-                      <span className="font-semibold text-slate-300">
+                    <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mb-2 gap-3">
+                      <span className="font-semibold text-slate-300 truncate">
                         {isAssistant ? (language === 'PH' ? 'VinFast Senior Sales Consultant' : 'VinFast Senior Sales Consultant') : (language === 'PH' ? 'Ikaw' : 'You')}
                       </span>
-                      <span>{msg.timestamp}</span>
+                      <span className="shrink-0">{msg.timestamp}</span>
                     </div>
 
                     {/* Formatted Text Content */}
@@ -314,19 +314,19 @@ export const AISalesChat = ({
 
                     {/* Media Gallery (if mediaUrls present) */}
                     {msg.mediaUrls && msg.mediaUrls.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-slate-800/80">
-                        <div className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                      <div className="mt-3 sm:mt-4 pt-3 border-t border-slate-800/80">
+                        <div className="text-[10px] sm:text-[11px] font-semibold text-blue-400 uppercase tracking-wider mb-2 flex items-center justify-between">
                           <span>{t.officialMedia} ({msg.mediaUrls.length} {language === 'PH' ? 'Litrato' : 'Photos'})</span>
-                          <span className="text-slate-400 text-[10px]">{t.clickToEnlarge}</span>
+                          <span className="text-slate-400 text-[9px] sm:text-[10px]">{t.clickToEnlarge}</span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                           {msg.mediaUrls.map((url, idx) => (
                             <a
                               key={idx}
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="group relative h-28 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-blue-500/80 overflow-hidden cursor-pointer flex items-center justify-center p-2 transition-all hover:scale-[1.02]"
+                              className="group relative h-24 sm:h-28 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-blue-500/80 overflow-hidden cursor-pointer flex items-center justify-center p-2 transition-all hover:scale-[1.02]"
                               title={t.clickToEnlarge}
                             >
                               <img
@@ -336,7 +336,7 @@ export const AISalesChat = ({
                                 loading="lazy"
                               />
                               <div className="absolute inset-0 bg-blue-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <ExternalLink className="w-5 h-5 text-white drop-shadow" />
+                                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" />
                               </div>
                             </a>
                           ))}
@@ -346,20 +346,20 @@ export const AISalesChat = ({
 
                     {/* Suggested Dealer Card (if applicable) */}
                     {msg.suggestedDealer && (
-                      <div className="mt-4 p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/60 text-xs">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-white text-sm">
+                      <div className="mt-3 sm:mt-4 p-3 rounded-xl bg-blue-950/40 border border-blue-800/60 text-xs">
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <span className="font-bold text-white text-xs sm:text-sm truncate">
                             {msg.suggestedDealer.name}
                           </span>
-                          <span className="text-[10px] text-blue-300 font-semibold px-2 py-0.5 rounded bg-blue-900/60 border border-blue-700/60">
+                          <span className="text-[9px] sm:text-[10px] text-blue-300 font-semibold px-1.5 sm:px-2 py-0.5 rounded bg-blue-900/60 border border-blue-700/60 shrink-0">
                             {msg.suggestedDealer.region}
                           </span>
                         </div>
-                        <p className="text-slate-300 mb-2">{msg.suggestedDealer.address}</p>
+                        <p className="text-slate-300 mb-2 text-[11px] sm:text-xs">{msg.suggestedDealer.address}</p>
                         <div className="flex items-center gap-3">
                           <a
                             href={`tel:${msg.suggestedDealer.hotlineRaw}`}
-                            className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-semibold"
+                            className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-semibold text-xs"
                           >
                             <Phone className="w-3.5 h-3.5" />
                             <span>{msg.suggestedDealer.hotline}</span>
@@ -375,13 +375,13 @@ export const AISalesChat = ({
             {/* Typing indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-slate-400 text-xs flex items-center gap-2">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-slate-400 text-xs flex items-center gap-2">
                   <div className="flex space-x-1">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]" />
                   </div>
-                  <span>{t.typingIndicator}</span>
+                  <span className="text-[11px] sm:text-xs">{t.typingIndicator}</span>
                 </div>
               </div>
             )}
@@ -390,7 +390,7 @@ export const AISalesChat = ({
           </div>
 
           {/* Chat Input Bar */}
-          <div className="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800">
+          <div className="p-2.5 sm:p-4 bg-slate-900/90 border-t border-slate-800">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -398,20 +398,20 @@ export const AISalesChat = ({
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={t.inputPlaceholder}
-                className="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               />
               <button
                 type="button"
                 onClick={() => handleSendMessage()}
                 disabled={!inputText.trim() || isTyping}
-                className="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white transition-all shadow-md shadow-blue-500/30 flex items-center justify-center shrink-0"
+                className="p-2.5 sm:p-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white transition-all shadow-md shadow-blue-500/30 flex items-center justify-center shrink-0"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
-              <span>{t.disclaimer}</span>
-              <span className="hidden sm:inline">{t.pressEnter}</span>
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mt-1.5 sm:mt-2 px-1">
+              <span className="truncate">{t.disclaimer}</span>
+              <span className="hidden sm:inline shrink-0">{t.pressEnter}</span>
             </div>
           </div>
         </div>

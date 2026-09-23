@@ -98,7 +98,7 @@ export function App() {
         type="button"
         id="floating-ai-specialist-btn"
         onClick={() => setIsAiChatOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white font-semibold text-xs sm:text-sm shadow-2xl shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-blue-400/30"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white font-semibold text-xs sm:text-sm shadow-2xl shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-blue-400/30"
         aria-label="Open VinFast AI Sales Specialist"
       >
         <span className="relative flex h-2.5 w-2.5">
@@ -107,7 +107,7 @@ export function App() {
         </span>
         <span className="flex items-center gap-1.5">
           <Bot className="w-4 h-4 text-white" />
-          <span>AI Specialist</span>
+          <span className="text-xs sm:text-sm">AI Specialist</span>
         </span>
       </button>
 

@@ -127,10 +127,10 @@ export const Estimator: React.FC<EstimatorProps> = ({
 
   return (
     <section id="estimator" className="pb-16 lg:pb-24 pt-4 lg:pt-8 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         {/* 1. Model Selector Strip */}
-        <div className="glass-card rounded-2xl p-2.5 sm:p-3 mb-6 border border-slate-800 shadow-2xl">
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="glass-card rounded-2xl p-2 sm:p-3 mb-4 sm:mb-6 border border-slate-800 shadow-2xl">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
             {VEHICLE_MODELS.map((model) => {
               const isSelected = model.id === currentModel.id;
               return (
@@ -138,24 +138,24 @@ export const Estimator: React.FC<EstimatorProps> = ({
                   key={model.id}
                   type="button"
                   onClick={() => onSelectModel(model.id)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 text-center ${
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl transition-all duration-200 text-center ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-[1.02] border border-blue-400/40'
                       : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-300 hover:text-white border border-slate-800/80'
                   }`}
                 >
-                  <span className="text-sm sm:text-base font-bold tracking-tight">
+                  <span className="text-xs sm:text-base font-bold tracking-tight">
                     {model.name}
                   </span>
                   <span
-                    className={`text-[10px] mt-0.5 font-medium truncate max-w-full ${
+                    className={`text-[9px] sm:text-[10px] mt-0.5 font-medium truncate max-w-full ${
                       isSelected ? 'text-blue-100' : 'text-slate-400'
                     }`}
                   >
                     {model.segment}
                   </span>
                   <span
-                    className={`text-[11px] font-semibold mt-1 ${
+                    className={`text-[10px] sm:text-[11px] font-semibold mt-1 ${
                       isSelected ? 'text-white' : 'text-blue-400'
                     }`}
                   >
@@ -168,62 +168,62 @@ export const Estimator: React.FC<EstimatorProps> = ({
         </div>
 
         {/* Model Spec Bar */}
-        <div className="glass-card rounded-2xl p-4 sm:p-5 mb-8 border border-slate-800/90 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-950/80 border border-blue-800/80 flex items-center justify-center text-blue-400 shadow-inner">
-              <Car className="w-6 h-6" />
+        <div className="glass-card rounded-2xl p-3.5 sm:p-5 mb-6 sm:mb-8 border border-slate-800/90 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-950/80 border border-blue-800/80 flex items-center justify-center text-blue-400 shadow-inner shrink-0">
+              <Car className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="text-lg sm:text-2xl font-bold text-white tracking-tight truncate">
                   {currentModel.name}
                 </h3>
                 {currentModel.badge && (
-                  <span className="text-[11px] font-semibold text-cyan-300 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60">
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-cyan-300 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60 shrink-0">
                     {currentModel.badge}
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              <p className="text-[11px] sm:text-sm text-slate-400 mt-0.5 truncate">
                 {currentModel.batteryKwh} kWh Battery · {currentModel.segment} · {currentModel.seats} Seats · {currentModel.drivetrain}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-6 text-sm">
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">{t.standardSrp}</div>
-              <div className="text-lg font-bold text-white">{formatPHP(activeSRP)}</div>
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-medium truncate">{t.standardSrp}</div>
+              <div className="text-sm sm:text-lg font-bold text-white">{formatPHP(activeSRP)}</div>
             </div>
 
             <div className="h-8 w-px bg-slate-800 hidden sm:block" />
 
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">{t.fullRange}</div>
-              <div className="text-lg font-bold text-blue-400">
-                {currentModel.rangeKm} km <span className="text-xs text-slate-400">({currentModel.rangeStandard})</span>
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-medium truncate">{t.fullRange}</div>
+              <div className="text-sm sm:text-lg font-bold text-blue-400">
+                {currentModel.rangeKm} km <span className="text-[10px] sm:text-xs text-slate-400">({currentModel.rangeStandard})</span>
               </div>
             </div>
 
             <div className="h-8 w-px bg-slate-800 hidden sm:block" />
 
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">{t.performance}</div>
-              <div className="text-lg font-bold text-white">
-                {currentModel.powerHp} hp <span className="text-xs text-slate-400">/ {currentModel.torqueNm} Nm</span>
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-medium truncate">{t.performance}</div>
+              <div className="text-sm sm:text-lg font-bold text-white">
+                {currentModel.powerHp} hp <span className="text-[10px] sm:text-xs text-slate-400">/ {currentModel.torqueNm} Nm</span>
               </div>
             </div>
           </div>
 
           {/* Battery Subscription Toggle for VF 3 and VF 5 Plus */}
           {currentModel.hasSubscriptionOption && currentModel.srpSubscription && (
-            <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-              <span className="text-xs font-semibold text-slate-300">{t.ownershipPlan}</span>
-              <div className="inline-flex p-1 rounded-xl bg-slate-900 border border-slate-700/80 text-xs">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between sm:justify-start gap-2 sm:gap-3 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-300">{t.ownershipPlan}</span>
+              <div className="grid grid-cols-2 sm:inline-flex p-1 rounded-xl bg-slate-900 border border-slate-700/80 text-[10px] sm:text-xs">
                 <button
                   type="button"
                   onClick={() => setOwnershipPlan('outright')}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium transition-all text-center ${
                     ownershipPlan === 'outright'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
@@ -234,7 +234,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
                 <button
                   type="button"
                   onClick={() => setOwnershipPlan('subscription')}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-medium transition-all text-center ${
                     ownershipPlan === 'subscription'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
@@ -248,32 +248,32 @@ export const Estimator: React.FC<EstimatorProps> = ({
         </div>
 
         {/* Two-Column Grid: Sliders & Visual on Left, Real-time Output Cards on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
           {/* LEFT COLUMN: Vehicle Showcase & Sliders (7 cols) */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-6">
             {/* Interactive Vehicle Visual & Color Switcher */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 relative overflow-hidden group">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 relative overflow-hidden group">
               <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 mb-3 sm:mb-4">
                 <div>
-                  <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+                  <span className="text-[10px] sm:text-xs font-semibold text-blue-400 uppercase tracking-wider">
                     {t.exteriorFinish}
                   </span>
-                  <div className="text-lg font-bold text-white">
+                  <div className="text-base sm:text-lg font-bold text-white">
                     {activeColor ? activeColor.name : t.standard}
                   </div>
                 </div>
 
                 {/* Color Swatches */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap max-w-full">
                   {currentModel.colors.map((color, idx) => (
                     <button
                       key={color.name}
                       type="button"
                       title={color.name}
                       onClick={() => setSelectedColorIndex(idx)}
-                      className={`w-6 h-6 rounded-full border-2 transition-all ${
+                      className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-all ${
                         selectedColorIndex === idx
                           ? 'border-blue-400 scale-125 shadow-lg shadow-blue-500/40 ring-2 ring-blue-500/30'
                           : 'border-slate-700 opacity-70 hover:opacity-100 hover:scale-110'
@@ -285,7 +285,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
               </div>
 
               {/* Vehicle Image Preview */}
-              <div className="relative w-full h-56 sm:h-72 flex items-center justify-center my-2">
+              <div className="relative w-full h-44 sm:h-72 flex items-center justify-center my-1 sm:my-2">
                 {activeColor?.imageUrl ? (
                   <img
                     src={activeColor.imageUrl}
@@ -294,14 +294,14 @@ export const Estimator: React.FC<EstimatorProps> = ({
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-slate-500">
-                    <Car className="w-20 h-20 mb-2" />
-                    <span>Showcase preview</span>
+                    <Car className="w-16 h-16 sm:w-20 sm:h-20 mb-2" />
+                    <span className="text-xs">Showcase preview</span>
                   </div>
                 )}
               </div>
 
               {/* Vehicle Quick Feature Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 border-t border-slate-800/80 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 pt-3 sm:pt-4 border-t border-slate-800/80 text-[11px] sm:text-xs">
                 <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                   <div className="text-slate-400 font-medium">{t.battery}</div>
                   <div className="font-semibold text-white mt-0.5">{currentModel.batteryKwh} kWh</div>
@@ -324,19 +324,19 @@ export const Estimator: React.FC<EstimatorProps> = ({
             </div>
 
             {/* Interactive Sliders Card */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-6">
-              <h4 className="text-base font-bold text-white flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-blue-500" />
+            <div className="glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 space-y-4 sm:space-y-6">
+              <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                 <span>{t.slidersTitle}</span>
               </h4>
 
               {/* Slider 1: Down Payment (10% to 50%) */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex justify-between items-center text-xs sm:text-sm">
                   <label className="font-semibold text-slate-200">
                     {t.downPayment}: <span className="text-blue-400 font-bold">{downPaymentPercent}%</span>
                   </label>
-                  <span className="font-bold text-white bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-700/80">
+                  <span className="font-bold text-white bg-slate-900/80 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-slate-700/80 text-xs sm:text-sm">
                     {formatPHP(calculations.downPaymentAmount)}
                   </span>
                 </div>
@@ -349,7 +349,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
                   onChange={(e) => setDownPaymentPercent(Number(e.target.value))}
                   className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
-                <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+                <div className="flex justify-between text-[10px] sm:text-[11px] text-slate-400 font-medium">
                   <span>10% (₱{Math.round(activeSRP * 0.1 / 1000)}k)</span>
                   <span>20% ({t.recommended})</span>
                   <span>30%</span>
@@ -358,23 +358,23 @@ export const Estimator: React.FC<EstimatorProps> = ({
               </div>
 
               {/* Slider 2: Loan Tenure (12 to 60 months, step 12) */}
-              <div className="space-y-2.5">
-                <div className="flex justify-between items-center text-sm">
+              <div className="space-y-2 sm:space-y-2.5">
+                <div className="flex justify-between items-center text-xs sm:text-sm">
                   <label className="font-semibold text-slate-200 flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
                     <span>{t.loanTenure}: <span className="text-cyan-400 font-bold">{loanTenureMonths} {t.months} ({loanTenureMonths / 12} {t.years})</span></span>
                   </label>
-                  <span className="text-xs text-slate-400">{t.indicativeRate}</span>
+                  <span className="text-[11px] sm:text-xs text-slate-400">{t.indicativeRate}</span>
                 </div>
 
                 {/* Tenure Quick Pills */}
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-1 sm:gap-2">
                   {[12, 24, 36, 48, 60].map((months) => (
                     <button
                       key={months}
                       type="button"
                       onClick={() => setLoanTenureMonths(months)}
-                      className={`py-2 rounded-xl text-xs font-semibold border transition-all ${
+                      className={`py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-semibold border transition-all ${
                         loanTenureMonths === months
                           ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/30'
                           : 'bg-slate-900/80 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700'
@@ -387,13 +387,13 @@ export const Estimator: React.FC<EstimatorProps> = ({
               </div>
 
               {/* Slider 3: Daily Commute Travel (10 km to 150 km) */}
-              <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                <div className="flex justify-between items-center text-sm">
+              <div className="space-y-1.5 sm:space-y-2 pt-2 border-t border-slate-800/80">
+                <div className="flex justify-between items-center text-xs sm:text-sm">
                   <label className="font-semibold text-slate-200 flex items-center gap-1.5">
-                    <Gauge className="w-4 h-4 text-emerald-400" />
+                    <Gauge className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                     <span>{t.dailyCommute}: <span className="text-emerald-400 font-bold">{dailyCommuteKm} km / day</span></span>
                   </label>
-                  <span className="font-bold text-slate-300 text-xs bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                  <span className="font-bold text-slate-300 text-[10px] sm:text-xs bg-slate-900 px-2 py-0.5 sm:py-1 rounded border border-slate-800">
                     ~{Math.round(calculations.monthlyDistance)} km {t.perMonth}
                   </span>
                 </div>
@@ -411,33 +411,33 @@ export const Estimator: React.FC<EstimatorProps> = ({
           </div>
 
           {/* RIGHT COLUMN: Real-time Output Cards (5 cols) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-4 sm:space-y-6">
             {/* Card 1: Estimated Monthly Amortization */}
-            <div className="glass-card rounded-2xl p-6 border border-blue-600/40 relative overflow-hidden glow-blue">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 border border-blue-600/40 relative overflow-hidden glow-blue">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold text-blue-400 flex items-center gap-1.5">
+                <span className="text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-blue-400 flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5" />
                   {t.amortizationTitle}
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/60">
+                <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/60">
                   8.0% p.a.
                 </span>
               </div>
 
               {/* Big Monthly Amortization Value */}
-              <div className="my-3">
-                <div className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+              <div className="my-2 sm:my-3">
+                <div className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
                   {formatPHP(calculations.monthlyAmortization)}
                 </div>
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="text-[11px] sm:text-xs text-slate-400 mt-1">
                   {t.perMonthFor} {loanTenureMonths} {t.months} ({loanTenureMonths / 12} {t.years})
                 </div>
               </div>
 
               {/* Financial Breakdown Table */}
-              <div className="space-y-2 pt-4 border-t border-slate-800 text-xs">
+              <div className="space-y-1.5 sm:space-y-2 pt-3 sm:pt-4 border-t border-slate-800 text-[11px] sm:text-xs">
                 <div className="flex justify-between text-slate-300">
                   <span className="text-slate-400">{t.netLoanAmount}</span>
                   <span className="font-semibold text-white">{formatPHP(calculations.loanAmount)}</span>
@@ -457,11 +457,11 @@ export const Estimator: React.FC<EstimatorProps> = ({
               </div>
 
               {/* CTAs Inside the Primary Card */}
-              <div className="mt-6 space-y-2.5">
+              <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-2.5">
                 <button
                   type="button"
                   onClick={() => onBookTestDrive(currentModel.id)}
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 sm:py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
                 >
                   <Car className="w-4 h-4" />
                   <span>{t.lockEstimateCta}</span>
@@ -476,7 +476,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
                         : `Can you give me a full breakdown of the ${currentModel.name} at ${formatPHP(calculations.monthlyAmortization)} per month?`;
                     onAskAI(prompt);
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-blue-400" />
                   <span>{t.askAiCta}</span>
@@ -485,35 +485,35 @@ export const Estimator: React.FC<EstimatorProps> = ({
             </div>
 
             {/* Card 2: Real-World Commute & Charging Stats */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <BatteryCharging className="w-4 h-4 text-emerald-400" />
+                <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 sm:gap-2">
+                  <BatteryCharging className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   <span>{t.commuteStatsTitle}</span>
                 </h4>
-                <span className="text-[10px] text-slate-400 font-medium">{t.bufferNote}</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium">{t.bufferNote}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <div className="text-[11px] text-slate-400 font-medium">{t.daysBetweenCharges}</div>
-                  <div className="text-2xl font-extrabold text-emerald-400 mt-1">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="p-2.5 sm:p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{t.daysBetweenCharges}</div>
+                  <div className="text-lg sm:text-2xl font-extrabold text-emerald-400 mt-0.5 sm:mt-1">
                     {t.every} {calculations.daysBetweenCharges} {calculations.daysBetweenCharges === 1 ? t.day : t.days}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{t.atCommute} {dailyCommuteKm} km daily commute</div>
+                  <div className="text-[9px] sm:text-[10px] text-slate-400 mt-0.5">{t.atCommute} {dailyCommuteKm} km daily commute</div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                  <div className="text-[11px] text-slate-400 font-medium">{t.chargesPerMonth}</div>
-                  <div className="text-2xl font-extrabold text-cyan-400 mt-1">
+                <div className="p-2.5 sm:p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{t.chargesPerMonth}</div>
+                  <div className="text-lg sm:text-2xl font-extrabold text-cyan-400 mt-0.5 sm:mt-1">
                     ~{Math.max(1, Math.round(calculations.chargingCyclesPerMonth))} {t.times}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{t.plugInNote}</div>
+                  <div className="text-[9px] sm:text-[10px] text-slate-400 mt-0.5">{t.plugInNote}</div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-blue-950/30 border border-blue-900/40 text-xs text-slate-300 flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+              <div className="p-2.5 sm:p-3 rounded-xl bg-blue-950/30 border border-blue-900/40 text-[11px] sm:text-xs text-slate-300 flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-white">{t.homeChargingTitle} </span>
                   {t.homeChargingDesc}
@@ -522,18 +522,18 @@ export const Estimator: React.FC<EstimatorProps> = ({
             </div>
 
             {/* Card 3: Fuel Savings vs Gasoline Comparison */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-emerald-400" />
+                <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 sm:gap-2">
+                  <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                   <span>{t.savingsTitle}</span>
                 </h4>
-                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/70 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-400 bg-emerald-950/70 border border-emerald-800/60 px-2 py-0.5 rounded-full">
                   {t.savingsBadge}
                 </span>
               </div>
 
-              <div className="space-y-2 text-xs">
+              <div className="space-y-1.5 sm:space-y-2 text-[11px] sm:text-xs">
                 <div className="flex justify-between items-center text-slate-400">
                   <span>{t.gasolineCar}</span>
                   <span className="text-rose-400 font-semibold">{formatPHP(calculations.monthlyGasCost)} / mo</span>
@@ -542,7 +542,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
                   <span>{t.vinfastEV}</span>
                   <span className="text-emerald-400 font-semibold">{formatPHP(calculations.monthlyEVCost)} / mo</span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800 font-bold text-sm">
+                <div className="flex justify-between items-center pt-2 border-t border-slate-800 font-bold text-xs sm:text-sm">
                   <span className="text-white">{t.annualSavings}</span>
                   <span className="text-emerald-400 font-extrabold">{formatPHP(calculations.annualSavings)} {t.perYear}</span>
                 </div>

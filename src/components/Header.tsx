@@ -25,10 +25,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
         {/* Left: VinFast Emblem & Title */}
-        <a href="#" className="flex items-center gap-3.5 group">
-          <div className="relative w-11 h-11 rounded-xl bg-white p-1 shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-700/50">
+        <a href="#" className="flex items-center gap-2 sm:gap-3.5 group min-w-0">
+          <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-1 shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-700/50 shrink-0">
             <img
               src="/vinfast-logo.png"
               alt="VinFast"
@@ -36,23 +36,24 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </div>
 
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-blue-400 transition-colors">
-                VinFast EV Companion
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-sm sm:text-xl font-bold tracking-tight text-white group-hover:text-blue-400 transition-colors truncate">
+                <span className="sm:hidden">VinFast</span>
+                <span className="hidden sm:inline">VinFast EV Companion</span>
               </span>
-              <span className="text-[11px] uppercase tracking-wider font-semibold text-blue-400 px-2 py-0.5 rounded-full bg-blue-950/80 border border-blue-800/60 shadow-sm">
+              <span className="text-[9px] sm:text-[11px] uppercase tracking-wider font-semibold text-blue-400 px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-950/80 border border-blue-800/60 shadow-sm shrink-0">
                 {t.philippines}
               </span>
             </div>
-            <span className="text-xs text-slate-400 hidden sm:block">
+            <span className="text-xs text-slate-400 hidden sm:block truncate">
               {t.tagline}
             </span>
           </div>
         </a>
 
         {/* Right Navigation & Controls */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
           {/* Navigation Links (Desktop) */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300 mr-2">
             <a
@@ -102,11 +103,11 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Language Toggle Pill: [ EN | PH ] */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-semibold">
+          <div className="flex items-center p-0.5 sm:p-1 rounded-lg sm:rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] sm:text-xs font-semibold">
             <button
               type="button"
               onClick={() => onToggleLanguage('EN')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg transition-all ${
                 language === 'EN'
                   ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/50'
                   : 'text-slate-400 hover:text-white'
@@ -117,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => onToggleLanguage('PH')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg transition-all ${
                 language === 'PH'
                   ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/50'
                   : 'text-slate-400 hover:text-white'
@@ -131,11 +132,12 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenTestDrive}
-            className="relative group overflow-hidden px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white text-xs sm:text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            className="relative group overflow-hidden px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white text-xs sm:text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
-            <span className="flex items-center gap-1.5">
-              <Car className="w-4 h-4" />
-              <span>{t.bookTestDrive}</span>
+            <span className="flex items-center gap-1 sm:gap-1.5">
+              <Car className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{t.bookTestDrive}</span>
+              <span className="inline sm:hidden">Test Drive</span>
             </span>
           </button>
 
@@ -143,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800 transition-all cursor-pointer"
+            className="md:hidden p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800 transition-all cursor-pointer"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

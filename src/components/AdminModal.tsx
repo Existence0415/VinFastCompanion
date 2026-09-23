@@ -169,24 +169,24 @@ export const AdminModal = ({ isOpen, onClose, language }: AdminModalProps) => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
+      <div className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[94vh] sm:max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md">
+        <div className="p-3.5 sm:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md shrink-0">
               <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="text-sm sm:text-lg font-bold text-white tracking-tight truncate">
                   {t.title}
                 </h3>
-                <span className="text-[10px] font-semibold text-blue-400 px-2 py-0.5 rounded bg-blue-950/80 border border-blue-800/60">
+                <span className="text-[9px] sm:text-[10px] font-semibold text-blue-400 px-1.5 sm:px-2 py-0.5 rounded bg-blue-950/80 border border-blue-800/60 shrink-0">
                   {t.badge}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate">
                 {t.subtitle}
               </p>
             </div>
@@ -195,46 +195,46 @@ export const AdminModal = ({ isOpen, onClose, language }: AdminModalProps) => {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Analytics Top Strip */}
-        <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-900/40 border-b border-slate-800">
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-            <div className="text-[11px] text-slate-400 font-medium">{t.totalReservations}</div>
-            <div className="text-2xl font-bold text-white mt-1">{bookings.length}</div>
+        <div className="p-3 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 bg-slate-900/40 border-b border-slate-800">
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{t.totalReservations}</div>
+            <div className="text-lg sm:text-2xl font-bold text-white mt-0.5 sm:mt-1">{bookings.length}</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-            <div className="text-[11px] text-slate-400 font-medium">{t.topModel}</div>
-            <div className="text-2xl font-bold text-blue-400 mt-1">VF 5 Plus</div>
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{t.topModel}</div>
+            <div className="text-lg sm:text-2xl font-bold text-blue-400 mt-0.5 sm:mt-1">VF 5 Plus</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-            <div className="text-[11px] text-slate-400 font-medium">{t.activeDealers}</div>
-            <div className="text-2xl font-bold text-cyan-400 mt-1">29 Nationwide</div>
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{t.activeDealers}</div>
+            <div className="text-lg sm:text-2xl font-bold text-cyan-400 mt-0.5 sm:mt-1">29 Nationwide</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
-            <div className="text-[11px] text-slate-400 font-medium">{t.conversionRate}</div>
-            <div className="text-2xl font-bold text-emerald-400 mt-1">94% Target</div>
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{t.conversionRate}</div>
+            <div className="text-lg sm:text-2xl font-bold text-emerald-400 mt-0.5 sm:mt-1">94% Target</div>
           </div>
         </div>
 
         {/* Controls & Filter Bar */}
-        <div className="p-4 sm:px-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <span className="text-xs font-semibold text-slate-300">{t.filterLabel}</span>
+        <div className="p-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-b border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-300">{t.filterLabel}</span>
             {['All', 'New', 'Contacted', 'Confirmed', 'Completed'].map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                className={`text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all ${
                   statusFilter === st
                     ? 'bg-blue-600 text-white border-blue-400'
                     : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'

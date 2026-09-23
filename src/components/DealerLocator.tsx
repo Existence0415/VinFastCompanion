@@ -60,28 +60,28 @@ export const DealerLocator = ({
       id="dealers"
       data-testid="dealers-modal"
       onClick={onClose}
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col cursor-default"
+        className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[94vh] sm:max-h-[90vh] flex flex-col cursor-default"
       >
         {/* Header Bar */}
-        <div className="p-5 sm:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md shrink-0">
+        <div className="p-3.5 sm:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md shrink-0">
               <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="text-sm sm:text-lg font-bold text-white tracking-tight truncate">
                   {t.title}
                 </h3>
-                <span className="text-[10px] font-semibold text-cyan-400 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60">
+                <span className="text-[9px] sm:text-[10px] font-semibold text-cyan-400 px-1.5 sm:px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800/60 shrink-0">
                   {t.badge}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 max-w-2xl mt-0.5 hidden sm:block">
+              <p className="text-[11px] sm:text-xs text-slate-400 max-w-2xl mt-0.5 hidden sm:block truncate">
                 {t.subtitle}
               </p>
             </div>
@@ -90,14 +90,14 @@ export const DealerLocator = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search & Region Filter Bar */}
-        <div className="p-4 sm:px-6 bg-slate-900/40 border-b border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="p-3 sm:px-6 bg-slate-900/40 border-b border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           {/* Search Bar */}
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -111,7 +111,7 @@ export const DealerLocator = ({
           </div>
 
           {/* Region Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {REGIONS.map((region) => {
               const count =
                 region === 'All'
@@ -124,7 +124,7 @@ export const DealerLocator = ({
                   key={region}
                   type="button"
                   onClick={() => setSelectedRegion(region)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0 transition-all ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
                       : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700'
@@ -132,7 +132,7 @@ export const DealerLocator = ({
                 >
                   <span>{getRegionLabel(region)}</span>
                   <span
-                    className={`ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] ${
+                    className={`ml-1 sm:ml-1.5 px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] ${
                       isSelected ? 'bg-blue-800 text-white' : 'bg-slate-800 text-slate-400'
                     }`}
                   >
@@ -145,7 +145,7 @@ export const DealerLocator = ({
         </div>
 
         {/* Dealers Grid (Scrollable) */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-grow max-h-[520px]">
+        <div className="p-3 sm:p-6 overflow-y-auto flex-grow max-h-[520px]">
           {filteredDealers.length === 0 ? (
             <div className="glass-card rounded-2xl p-12 text-center text-slate-400">
               <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-3" />
