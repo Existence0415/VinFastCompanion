@@ -171,9 +171,9 @@ export const AISalesChat = ({
       if (trimmed.startsWith('- ')) {
         const bulletContent = trimmed.substring(2);
         elements.push(
-          <div key={`bullet-${index}`} className="flex items-start gap-2 my-1 text-slate-200">
-            <span className="text-blue-400 font-bold mt-0.5">•</span>
-            <span className="text-xs sm:text-sm leading-relaxed">{bulletContent}</span>
+          <div key={`bullet-${index}`} className="flex items-start gap-2 my-1 text-slate-200 min-w-0">
+            <span className="text-blue-400 font-bold mt-0.5 shrink-0">•</span>
+            <span className="text-xs sm:text-sm leading-relaxed break-words [overflow-wrap:anywhere] min-w-0">{bulletContent}</span>
           </div>
         );
         return;
@@ -184,9 +184,9 @@ export const AISalesChat = ({
         const [label, ...valParts] = trimmed.split(': ');
         const val = valParts.join(': ');
         elements.push(
-          <div key={`kv-${index}`} className="flex flex-wrap items-baseline gap-1.5 text-xs sm:text-sm my-0.5">
-            <span className="text-slate-400 font-medium">{label}:</span>
-            <span className="text-slate-100 font-semibold">{val}</span>
+          <div key={`kv-${index}`} className="flex flex-wrap items-baseline gap-1.5 text-xs sm:text-sm my-0.5 min-w-0 break-words">
+            <span className="text-slate-400 font-medium shrink-0">{label}:</span>
+            <span className="text-slate-100 font-semibold break-words [overflow-wrap:anywhere] min-w-0">{val}</span>
           </div>
         );
         return;
@@ -197,7 +197,7 @@ export const AISalesChat = ({
       elements.push(
         <p
           key={`text-${index}`}
-          className={`text-xs sm:text-sm leading-relaxed ${
+          className={`text-xs sm:text-sm leading-relaxed break-words [overflow-wrap:anywhere] min-w-0 ${
             isQuestion
               ? 'text-cyan-300 font-semibold pt-2 border-t border-slate-800/80'
               : 'text-slate-200'
@@ -219,57 +219,59 @@ export const AISalesChat = ({
         id="ai-specialist"
         data-testid="ai-specialist-modal"
         onClick={onClose}
-        className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 cursor-pointer"
+        className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-0 lg:p-4 cursor-pointer"
       >
         <div
           id="ai-assistant"
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[94vh] sm:max-h-[90vh] flex flex-col cursor-default"
+          className="relative w-full max-w-full lg:max-w-5xl h-full lg:h-auto max-h-[100dvh] lg:max-h-[90vh] bg-slate-950 border-0 lg:border border-slate-800 rounded-none lg:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col cursor-default"
         >
           {/* Header Bar */}
-          <div className="p-3 sm:p-5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2">
-          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-            <div className="relative shrink-0">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white p-1 shadow-lg shadow-blue-500/25 flex items-center justify-center overflow-hidden border border-slate-700/50">
-                <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
+          <div className="p-3 sm:p-4 lg:p-5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2 w-full max-w-full">
+            <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
+              <div className="relative shrink-0">
+                <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white p-1 shadow-lg shadow-blue-500/25 flex items-center justify-center overflow-hidden border border-slate-700/50">
+                  <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-slate-950 shadow-sm" />
               </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-slate-950 shadow-sm" />
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <h3 className="text-xs sm:text-base lg:text-lg font-bold text-white tracking-tight truncate">
+                    {t.agentTitle}
+                  </h3>
+                  <span className="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="hidden sm:inline">{t.agentBadge}</span>
+                    <span className="sm:hidden">Online</span>
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-xs text-slate-400 truncate">
+                  {t.agentSubtitle}
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <h3 className="text-sm sm:text-lg font-bold text-white tracking-tight truncate">
-                  {t.agentTitle}
-                </h3>
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {t.agentBadge}
-                </span>
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span>{t.connectedDealers}</span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-400 truncate">
-                {t.agentSubtitle}
-              </p>
+
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close AI Specialist chat"
+                className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              <span>{t.connectedDealers}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
 
           {/* Quick Reply Suggestion Chips */}
-          <div className="px-3 py-2 sm:px-4 sm:py-2.5 bg-slate-950/60 border-b border-slate-800/60 overflow-x-auto flex items-center gap-1.5 sm:gap-2 no-scrollbar">
+          <div className="px-3 py-2 sm:px-4 sm:py-2.5 bg-slate-950/60 border-b border-slate-800/60 overflow-x-auto flex items-center gap-1.5 sm:gap-2 no-scrollbar w-full max-w-full shrink-0">
             <span className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase tracking-wider shrink-0 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-blue-400" />
               {t.suggestedLabel}
@@ -279,7 +281,7 @@ export const AISalesChat = ({
                 key={chip}
                 type="button"
                 onClick={() => handleSendMessage(chip)}
-                className="shrink-0 text-[11px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-blue-500/50 transition-all flex items-center gap-1"
+                className="shrink-0 text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-blue-500/50 transition-all flex items-center gap-1"
               >
                 <span>{chip}</span>
                 <ChevronRight className="w-3 h-3 text-slate-500" />
@@ -288,16 +290,16 @@ export const AISalesChat = ({
           </div>
 
           {/* Chat Messages Log */}
-          <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[560px] min-h-[300px] sm:min-h-[380px] overflow-y-auto">
+          <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full min-w-0">
             {messages.map((msg) => {
               const isAssistant = msg.sender === 'assistant';
               return (
                 <div
                   key={msg.id}
-                  className={`flex ${isAssistant ? 'justify-start' : 'justify-end'}`}
+                  className={`w-full flex ${isAssistant ? 'justify-start' : 'justify-end'} min-w-0`}
                 >
                   <div
-                    className={`max-w-[92%] sm:max-w-[80%] rounded-2xl p-3.5 sm:p-5 transition-all text-xs sm:text-sm ${
+                    className={`max-w-[95%] sm:max-w-[85%] lg:max-w-[80%] rounded-2xl p-3 sm:p-4 lg:p-5 transition-all text-xs sm:text-sm break-words [overflow-wrap:anywhere] overflow-hidden min-w-0 ${
                       isAssistant
                         ? 'bg-slate-900/95 text-slate-100 border border-slate-800 shadow-md'
                         : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
@@ -355,8 +357,8 @@ export const AISalesChat = ({
 
                     {/* Suggested Dealer Card (if applicable) */}
                     {msg.suggestedDealer && (
-                      <div className="mt-3 sm:mt-4 p-3 rounded-xl bg-blue-950/40 border border-blue-800/60 text-xs">
-                        <div className="flex items-center justify-between mb-1 gap-2">
+                      <div className="mt-3 sm:mt-4 p-3 rounded-xl bg-blue-950/40 border border-blue-800/60 text-xs w-full max-w-full overflow-hidden min-w-0">
+                        <div className="flex items-center justify-between mb-1 gap-2 min-w-0">
                           <span className="font-bold text-white text-xs sm:text-sm truncate">
                             {msg.suggestedDealer.name}
                           </span>
@@ -364,7 +366,7 @@ export const AISalesChat = ({
                             {msg.suggestedDealer.region}
                           </span>
                         </div>
-                        <p className="text-slate-300 mb-2 text-[11px] sm:text-xs">{msg.suggestedDealer.address}</p>
+                        <p className="text-slate-300 mb-2 text-[11px] sm:text-xs break-words [overflow-wrap:anywhere]">{msg.suggestedDealer.address}</p>
                         <div className="flex items-center gap-3">
                           <a
                             href={`tel:${msg.suggestedDealer.hotlineRaw}`}
@@ -399,15 +401,15 @@ export const AISalesChat = ({
           </div>
 
           {/* Chat Input Bar */}
-          <div className="p-2.5 sm:p-4 bg-slate-900/90 border-t border-slate-800">
-            <div className="flex items-center gap-2">
+          <div className="p-2.5 sm:p-3 lg:p-4 bg-slate-900/90 border-t border-slate-800 shrink-0 w-full max-w-full">
+            <div className="flex items-center gap-2 w-full min-w-0">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={t.inputPlaceholder}
-                className="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="flex-1 min-w-0 bg-slate-950 border border-slate-700/80 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               />
               <button
                 type="button"
@@ -418,8 +420,8 @@ export const AISalesChat = ({
                 <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
-            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mt-1.5 sm:mt-2 px-1">
-              <span className="truncate">{t.disclaimer}</span>
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mt-1.5 sm:mt-2 px-1 min-w-0 gap-2">
+              <span className="truncate flex-1 min-w-0">{t.disclaimer}</span>
               <span className="hidden sm:inline shrink-0">{t.pressEnter}</span>
             </div>
           </div>
