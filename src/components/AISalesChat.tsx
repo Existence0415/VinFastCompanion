@@ -4,12 +4,13 @@ import {
   Sparkles,
   Phone,
   ChevronRight,
-  ExternalLink,
   X,
+  ZoomIn,
 } from 'lucide-react';
 import type { ChatMessage } from '../types';
 import { generateSalesResponse } from '../data/salesBrain';
 import { TRANSLATIONS } from '../data/translations';
+import { ImageLightboxModal } from './ImageLightboxModal';
 
 interface AISalesChatProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export const AISalesChat = ({
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [sessionLanguage, setSessionLanguage] = useState<string | null>(null);
+  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; title?: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -321,24 +323,31 @@ export const AISalesChat = ({
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                           {msg.mediaUrls.map((url, idx) => (
-                            <a
+                            <button
                               key={idx}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group relative h-24 sm:h-28 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-blue-500/80 overflow-hidden cursor-pointer flex items-center justify-center p-2 transition-all hover:scale-[1.02]"
+                              type="button"
+                              onClick={() =>
+                                setEnlargedPhoto({
+                                  url,
+                                  title: `${t.officialMedia} · ${language === 'PH' ? 'Litrato' : 'Photo'} ${idx + 1}`,
+                                })
+                              }
+                              className="group relative h-24 sm:h-28 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-blue-500/80 overflow-hidden cursor-pointer flex items-center justify-center p-2 transition-all hover:scale-[1.02] text-left focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                               title={t.clickToEnlarge}
                             >
                               <img
                                 src={url}
-                                alt="VinFast Vehicle"
+                                alt={`VinFast Vehicle ${idx + 1}`}
                                 className="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-105 transition-transform"
                                 loading="lazy"
                               />
-                              <div className="absolute inset-0 bg-blue-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" />
+                              <div className="absolute inset-0 bg-blue-950/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <span className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-white bg-blue-600/90 px-2 py-1 rounded-lg shadow-lg">
+                                  <ZoomIn className="w-3.5 h-3.5" />
+                                  <span>{language === 'PH' ? 'Palakihin' : 'Enlarge'}</span>
+                                </span>
                               </div>
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -416,6 +425,15 @@ export const AISalesChat = ({
           </div>
         </div>
       </div>
+
+      {/* Enlarged Photo Lightbox Modal */}
+      <ImageLightboxModal
+        isOpen={Boolean(enlargedPhoto)}
+        imageUrl={enlargedPhoto?.url || null}
+        title={enlargedPhoto?.title}
+        onClose={() => setEnlargedPhoto(null)}
+        language={language}
+      />
     </>
   );
 };

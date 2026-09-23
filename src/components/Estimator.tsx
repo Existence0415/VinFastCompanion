@@ -9,10 +9,12 @@ import {
   Sparkles,
   CheckCircle2,
   TrendingDown,
+  ZoomIn,
 } from 'lucide-react';
 import { VEHICLE_MODELS } from '../data/models';
 import type { VehicleModel } from '../types';
 import { TRANSLATIONS } from '../data/translations';
+import { ImageLightboxModal } from './ImageLightboxModal';
 
 interface EstimatorProps {
   selectedModelId: string;
@@ -54,6 +56,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
   const [downPaymentPercent, setDownPaymentPercent] = useState<number>(20); // 10% to 50%
   const [loanTenureMonths, setLoanTenureMonths] = useState<number>(36); // 12 to 60 mo, step 12
   const [dailyCommuteKm, setDailyCommuteKm] = useState<number>(45); // 10 to 150 km
+  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; title?: string } | null>(null);
 
   // Determine active SRP based on ownership plan
   const activeSRP = useMemo(() => {
@@ -287,11 +290,27 @@ export const Estimator: React.FC<EstimatorProps> = ({
               {/* Vehicle Image Preview */}
               <div className="relative w-full h-44 sm:h-72 flex items-center justify-center my-1 sm:my-2">
                 {activeColor?.imageUrl ? (
-                  <img
-                    src={activeColor.imageUrl}
-                    alt={`${currentModel.name} in ${activeColor.name}`}
-                    className="max-h-full max-w-full object-contain drop-shadow-[0_20px_25px_rgba(0,132,255,0.2)] transition-transform duration-500 group-hover:scale-105"
-                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEnlargedPhoto({
+                        url: activeColor.imageUrl,
+                        title: `${currentModel.name} · ${activeColor.name}`,
+                      })
+                    }
+                    className="relative group max-h-full max-w-full flex items-center justify-center cursor-zoom-in focus:outline-none"
+                    title={language === 'PH' ? 'I-click para palakihin ang litrato' : 'Click to enlarge vehicle photo'}
+                  >
+                    <img
+                      src={activeColor.imageUrl}
+                      alt={`${currentModel.name} in ${activeColor.name}`}
+                      className="max-h-full max-w-full object-contain drop-shadow-[0_20px_25px_rgba(0,132,255,0.2)] transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/85 backdrop-blur-sm border border-slate-700/80 text-slate-300 text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none shadow-md">
+                      <ZoomIn className="w-3 h-3 text-blue-400" />
+                      <span>{language === 'PH' ? 'Palakihin' : 'Enlarge'}</span>
+                    </div>
+                  </button>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-slate-500">
                     <Car className="w-16 h-16 sm:w-20 sm:h-20 mb-2" />
@@ -551,6 +570,15 @@ export const Estimator: React.FC<EstimatorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Enlarged Photo Lightbox Modal */}
+      <ImageLightboxModal
+        isOpen={Boolean(enlargedPhoto)}
+        imageUrl={enlargedPhoto?.url || null}
+        title={enlargedPhoto?.title}
+        onClose={() => setEnlargedPhoto(null)}
+        language={language}
+      />
     </section>
   );
 };

@@ -91,6 +91,8 @@ export interface TranslationSchema {
     chips: string[];
     officialMedia: string;
     clickToEnlarge: string;
+    closePhoto: string;
+    openOriginal: string;
     typingIndicator: string;
     inputPlaceholder: string;
     disclaimer: string;
@@ -267,6 +269,8 @@ export const TRANSLATIONS: Record<'EN' | 'PH', TranslationSchema> = {
       ],
       officialMedia: 'Official Media Showcase',
       clickToEnlarge: 'Click photo to enlarge',
+      closePhoto: 'Close photo (Esc)',
+      openOriginal: 'Open original image',
       typingIndicator: 'VinFast Sales Specialist is formulating quotation & specs...',
       inputPlaceholder: 'Ask about VF 5 vs gas cars, VF 3 colors, monthly amortization, or nearest dealer...',
       disclaimer: 'Backed by Official VinFast Philippines Intelligence & 29 Dealers',
@@ -441,6 +445,8 @@ export const TRANSLATIONS: Record<'EN' | 'PH', TranslationSchema> = {
       ],
       officialMedia: 'Opisyal na Media Gallery',
       clickToEnlarge: 'I-click ang litrato para palakihin',
+      closePhoto: 'Isara ang litrato (Esc)',
+      openOriginal: 'Buksan ang orihinal',
       typingIndicator: 'Ang VinFast Sales Specialist ay bumubuo ng quotation at datos...',
       inputPlaceholder: 'Magtanong tungkol sa VF 5 vs gas car, kulay ng VF 3, monthly amortization, o pinakamalapit na dealer...',
       disclaimer: 'Suportado ng Opisyal na VinFast Philippines Intelligence at 29 Dealers',
