@@ -1,4 +1,4 @@
-import type { Dealer } from '../types';
+import type { Dealer, ChatMessage } from '../types';
 import { DEALERS } from './dealers';
 
 interface BrainResponse {
@@ -166,12 +166,18 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
   const hasIlonggoWords =
     q.includes('maayong aga') ||
     q.includes('maayong gab-i') ||
-    q.includes('diin ang dealer') ||
+    q.includes('diin') ||
+    q.includes('sang') ||
+    q.includes('balayran') ||
     q.includes('pila ang balayran') ||
     q.includes('pila ang bili') ||
+    q.includes('luyag') ||
     q.includes('luyag ko') ||
-    q.includes('gusto ko magpamangkot') ||
-    q.includes('pamangkot');
+    q.includes('pamangkot') ||
+    q.includes('namian') ||
+    q.includes('subong') ||
+    q.includes('iloilo') ||
+    q.includes('bacolod');
 
   if (isIlonggoSwitch) return { lang: 'ILO', isExplicitSwitch: true };
   if (hasIlonggoWords) return { lang: 'ILO', isExplicitSwitch: false };
@@ -267,10 +273,10 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
   if (isEnglishSwitch) return { lang: 'EN', isExplicitSwitch: true };
 
   // 9. Generic language request (e.g., "speak in French", "can you speak German", "talk in Vietnamese")
-  const genericMatch = q.match(/(?:speak|converse|talk|translate|switch to|in)\s+([a-zA-Z]+)/i);
+  const genericMatch = q.match(/\b(?:speak|converse|talk|translate|switch to)\s+(?:in\s+)?([a-zA-Z]+)\b/i);
   if (genericMatch && genericMatch[1]) {
     const word = genericMatch[1].toLowerCase();
-    const commonIgnored = ['to', 'with', 'about', 'a', 'the', 'my', 'your', 'me', 'us', 'detail', 'details', 'terms', 'mind', 'fact', 'short', 'full'];
+    const commonIgnored = ['to', 'with', 'about', 'a', 'the', 'my', 'your', 'me', 'us', 'detail', 'details', 'terms', 'mind', 'fact', 'short', 'full', 'more', 'now'];
     if (!commonIgnored.includes(word)) {
       return { lang: word.toUpperCase(), isExplicitSwitch: true };
     }
@@ -280,11 +286,290 @@ export function detectLanguage(query: string, currentLang: string = 'EN'): { lan
   return { lang: currentLang, isExplicitSwitch: false };
 }
 
+export interface ConversationContext {
+  lastModel?: 'VF 3' | 'VF 5 Plus' | 'VF 6' | 'VF 7' | 'VF 9';
+  lastModelId?: 'vf-3' | 'vf-5-plus' | 'vf-6' | 'vf-7' | 'vf-9';
+  lastTopic?: 'pricing' | 'subscription' | 'colors' | 'photos' | 'specs' | 'dealers' | 'test_drive' | 'comparison' | 'savings' | 'general';
+  lastClosingQuestion?: string;
+  repeatModelCount: number;
+  repeatTopicCount: number;
+  totalTurns: number;
+}
+
+/**
+ * Extracts conversation context from prior chat history to resolve pronouns,
+ * track discussed models and topics, and prevent repetitive responses.
+ */
+export function extractConversationContext(history: ChatMessage[] = [], currentQuery: string): ConversationContext {
+  let lastModel: ConversationContext['lastModel'];
+  let lastModelId: ConversationContext['lastModelId'];
+  let lastTopic: ConversationContext['lastTopic'];
+  let lastClosingQuestion: string | undefined;
+  let repeatModelCount = 0;
+  let repeatTopicCount = 0;
+
+  const q = currentQuery.toLowerCase();
+  const currentModel = detectModelInText(q);
+  const currentTopic = detectTopicInText(q);
+
+  // Scan messages in reverse (from newest to oldest)
+  const pastMessages = history.slice();
+  if (pastMessages.length > 0 && pastMessages[pastMessages.length - 1].sender === 'user' && pastMessages[pastMessages.length - 1].text.trim() === currentQuery.trim()) {
+    pastMessages.pop();
+  }
+
+  for (let i = pastMessages.length - 1; i >= 0; i--) {
+    const msg = pastMessages[i];
+    const text = msg.text.toLowerCase();
+
+    if (!lastModel) {
+      const found = detectModelInText(text);
+      if (found) {
+        lastModel = found.model;
+        lastModelId = found.id;
+      }
+    }
+
+    if (!lastTopic) {
+      const foundTopic = detectTopicInText(text);
+      if (foundTopic) {
+        lastTopic = foundTopic;
+      }
+    }
+
+    if (!lastClosingQuestion && msg.sender === 'assistant') {
+      const lines = msg.text.trim().split('\n').filter(l => l.trim().length > 0);
+      if (lines.length > 0) {
+        lastClosingQuestion = lines[lines.length - 1];
+      }
+    }
+
+    if (lastModel && lastTopic && lastClosingQuestion) break;
+  }
+
+  // Count repeat inquiries on the same model
+  if (currentModel && lastModel && currentModel.model === lastModel) {
+    repeatModelCount = 1;
+    for (let i = pastMessages.length - 1; i >= 0; i--) {
+      const m = detectModelInText(pastMessages[i].text.toLowerCase());
+      if (m && m.model === lastModel) repeatModelCount++;
+      else if (m) break;
+    }
+  }
+
+  // Count repeat inquiries on the same topic
+  if (currentTopic && lastTopic && currentTopic === lastTopic) {
+    repeatTopicCount = 1;
+    for (let i = pastMessages.length - 1; i >= 0; i--) {
+      const t = detectTopicInText(pastMessages[i].text.toLowerCase());
+      if (t && t === lastTopic) repeatTopicCount++;
+      else if (t) break;
+    }
+  }
+
+  return {
+    lastModel,
+    lastModelId,
+    lastTopic,
+    lastClosingQuestion,
+    repeatModelCount,
+    repeatTopicCount,
+    totalTurns: history.length,
+  };
+}
+
+export function detectModelInText(text: string): { model: ConversationContext['lastModel']; id: ConversationContext['lastModelId'] } | undefined {
+  if (text.includes('vf 3') || text.includes('vf3')) return { model: 'VF 3', id: 'vf-3' };
+  if (text.includes('vf 5') || text.includes('vf5')) return { model: 'VF 5 Plus', id: 'vf-5-plus' };
+  if (text.includes('vf 6') || text.includes('vf6')) return { model: 'VF 6', id: 'vf-6' };
+  if (text.includes('vf 7') || text.includes('vf7')) return { model: 'VF 7', id: 'vf-7' };
+  if (text.includes('vf 9') || text.includes('vf9')) return { model: 'VF 9', id: 'vf-9' };
+  return undefined;
+}
+
+export function detectTopicInText(text: string): ConversationContext['lastTopic'] | undefined {
+  if (text.includes('photo') || text.includes('picture') || text.includes('image') || text.includes('litrato') || text.includes('larawan') || text.includes('gallery') || text.includes('图片') || text.includes('写真') || text.includes('사진')) return 'photos';
+  if (text.includes('color') || text.includes('kulay') || text.includes('look') || text.includes('paint') || text.includes('kolor') || text.includes('颜色') || text.includes('色') || text.includes('색상')) return 'colors';
+  if (text.includes('subscription') || text.includes('lease') || text.includes('rental') || text.includes('baterya') || text.includes('租') || text.includes('구독')) return 'subscription';
+  if (text.includes('price') || text.includes('presyo') || text.includes('magkano') || text.includes('srp') || text.includes('cost') || text.includes('financing') || text.includes('monthly') || text.includes('promo') || text.includes('discount') || text.includes('down payment') || text.includes('hulog') || text.includes('pila') || text.includes('tagpila') || text.includes('多少钱') || text.includes('报价') || text.includes('cuanto') || text.includes('いくら') || text.includes('얼마')) return 'pricing';
+  if (text.includes('dealer') || text.includes('showroom') || text.includes('branch') || text.includes('saan') || text.includes('where') || text.includes('location') || text.includes('address') || text.includes('hotline') || text.includes('cebu') || text.includes('davao') || text.includes('gensan') || text.includes('manila') || text.includes('bgc') || text.includes('展厅') || text.includes('门店') || text.includes('asa') || text.includes('diin') || text.includes('concesionario') || text.includes('ディーラー') || text.includes('매장') || text.includes('대리점')) return 'dealers';
+  if (text.includes('test drive') || text.includes('subukan') || text.includes('drive') || text.includes('try') || text.includes('schedule') || text.includes('book') || text.includes('试驾') || text.includes('prueba de manejo') || text.includes('試乗') || text.includes('시승')) return 'test_drive';
+  if (text.includes('range') || text.includes('charging') || text.includes('charge') || text.includes('hp') || text.includes('speed') || text.includes('specs') || text.includes('feature') || text.includes('ground clearance') || text.includes('motor') || text.includes('torque') || text.includes('battery') || text.includes('续航') || text.includes('充电') || text.includes('走行距離') || text.includes('주행거리')) return 'specs';
+  if (text.includes('compare') || text.includes('vs') || text.includes('gas') || text.includes('toyota') || text.includes('byd') || text.includes('kontra') || text.includes('ihambing')) return 'comparison';
+  if (text.includes('save') || text.includes('savings') || text.includes('tipid') || text.includes('gasolina') || text.includes('diesel')) return 'savings';
+  return undefined;
+}
+
+/**
+ * Detects whether a query is ambiguous, confusing, or non-committal
+ * so the AI can provide focused clarification without dumping unrelated text.
+ */
+export function isConfusingOrAmbiguous(rawQuery: string): boolean {
+  const q = rawQuery.trim().toLowerCase();
+
+  const hasDomainKeyword =
+    q.includes('vf') ||
+    q.includes('vinfast') ||
+    q.includes('price') ||
+    q.includes('presyo') ||
+    q.includes('magkano') ||
+    q.includes('pila') ||
+    q.includes('dealer') ||
+    q.includes('showroom') ||
+    q.includes('test drive') ||
+    q.includes('subok') ||
+    q.includes('color') ||
+    q.includes('kulay') ||
+    q.includes('photo') ||
+    q.includes('picture') ||
+    q.includes('litrato') ||
+    q.includes('range') ||
+    q.includes('km') ||
+    q.includes('charge') ||
+    q.includes('charging') ||
+    q.includes('battery') ||
+    q.includes('baterya') ||
+    q.includes('warranty') ||
+    q.includes('evida') ||
+    q.includes('coding') ||
+    q.includes('cebu') ||
+    q.includes('davao') ||
+    q.includes('manila') ||
+    q.includes('bgc') ||
+    q.includes('qc') ||
+    q.includes('试驾') ||
+    q.includes('展厅') ||
+    q.includes('多少钱') ||
+    q.includes('颜色') ||
+    q.includes('续航') ||
+    q.includes('시승') ||
+    q.includes('가격') ||
+    q.includes('試乗') ||
+    q.includes('価格') ||
+    q.includes('specs') ||
+    q.includes('features');
+
+  if (hasDomainKeyword) return false;
+
+  const ambiguousPhrases = [
+    'ok', 'okay', 'k', 'kk', 'sure', 'yes', 'no', 'maybe', 'huh', 'huh?', 'what', 'what?',
+    'how', 'how?', 'tell me more', 'hmm', 'hmmm', 'why', 'why?', 'idk', 'what do you mean',
+    'not sure', 'confused', 'i don\'t know', 'what else', 'and then', 'so?', 'so what',
+    'ano?', 'ano', 'ha?', 'ano po?', 'bakit?', 'sige', 'sige nga', 'talaga?', 'e ano?',
+    'paano?', 'paano ba?', 'ewan', 'di ko alam', 'wala lang', 'pwede ba?', 'anong meron',
+    'unsa?', 'unsa man?', 'ngano?', 'mao ba?', 'ambot', 'unya?',
+    'ano?', 'nga-a?', 'ti ano?',
+    '什么?', '什么', '怎么说', '然後呢', '然后呢', '不懂', '啊?', '哦', '好的', '行吧', '不知道',
+    'que?', '¿qué?', 'como?', '¿cómo?', 'no se', 'bueno', 'vale',
+    'どういうこと?', 'え？', '何？', 'うん', 'わからない',
+    '뭐?', '어떤 거?', '글쎄', '몰라', '네', '어떻게?',
+  ];
+
+  if (ambiguousPhrases.includes(q)) return true;
+  if (/^[?!\.\s,;:-]+$/.test(q)) return true;
+  if (q.length <= 3 && !/^[0-9]+$/.test(q)) return true;
+
+  return false;
+}
+
+/**
+ * Relates closing questions based on previous conversation history and the current inquiry,
+ * ensuring variation and always directing the user toward a close or a VIP test drive.
+ */
+export function generateDynamicClosingQuestion(
+  topic: string,
+  modelName: string,
+  context: ConversationContext,
+  lang: string,
+  dealerName?: string
+): string {
+  const isTagalog = lang === 'PH';
+  const isBisaya = lang === 'CEB';
+  const isChinese = lang === 'ZH';
+
+  // 1. If previous topic was pricing and current is colors / photos
+  if (context.lastTopic === 'pricing' && (topic === 'colors' || topic === 'photos')) {
+    if (isTagalog) return `Dahil abot-kaya ang presyo ng ${modelName}, aling kulay ang nais mong makita nang personal sa iyong libreng VIP test drive?`;
+    if (isBisaya) return `Tungod kay abot-kaya kaayo ang presyo sa ${modelName}, unsa nga kolor ang gusto nimong makita sa personal sa imong test drive?`;
+    if (isChinese) return `鉴于 ${modelName} 极具性价比的官方售价，请问您想在到店试驾时亲自鉴赏哪款车身颜色？`;
+    return `Since the ${modelName} offers such an accessible price point, which of these colors would you like to see in person during your VIP test drive?`;
+  }
+
+  // 2. If previous topic was colors and current is test drive / dealers
+  if (context.lastTopic === 'colors' && (topic === 'test_drive' || topic === 'dealers')) {
+    const dText = dealerName ? ` sa ${dealerName}` : '';
+    const dTextEn = dealerName ? ` at ${dealerName}` : '';
+    const dTextZh = dealerName ? `在 ${dealerName}` : '';
+    if (isTagalog) return `Maaari naming ihanda ang iyong paboritong kulay ng ${modelName}${dText}. Nais mo bang ipag-schedule kita ng VIP test drive ngayong Sabado o Linggo?`;
+    if (isBisaya) return `Mahimo namong iandam ang imong paboritong kolor sa ${modelName}. Gusto ba nimong mag-book og test drive karong semanaha?`;
+    if (isChinese) return `我们可以提前为您备好心仪颜色的 ${modelName} 试驾车辆${dTextZh}。请问您想预约本周末上午还是下午到店？`;
+    return `We can arrange to have your preferred color of the ${modelName} prepared for your arrival${dTextEn}. Would you prefer a morning or afternoon slot this weekend for your VIP test drive?`;
+  }
+
+  // 3. If previous topic was dealers and current is pricing / financing
+  if (context.lastTopic === 'dealers' && topic === 'pricing') {
+    const dText = dealerName ? ` sa ${dealerName}` : ' sa pinakamalapit na showroom';
+    const dTextEn = dealerName ? ` at ${dealerName}` : ' at your nearest showroom';
+    const dTextZh = dealerName ? `在 ${dealerName}` : '在离您最近的官方展厅';
+    if (isTagalog) return `Maaari ring magbigay ng agarang bank approval ang aming finance team${dText}. Nais mo bang mag-book ng test drive kasama ang formal loan quotation doon?`;
+    if (isBisaya) return `Makapreparar ang among finance team${dText} og on-the-spot bank computation. Mag-book ba kita og test drive slot karon?`;
+    if (isChinese) return `我们${dTextZh}的金融顾问可现场为您办理银行分期极速预审。需要为您预约到店试驾并获取专属方案吗？`;
+    return `Our on-site finance team${dTextEn} can also assist with immediate bank pre-approvals. Would you like to schedule an appointment for both a VIP test drive and a formal quotation?`;
+  }
+
+  // 4. If current topic is test drive
+  if (topic === 'test_drive') {
+    if (isTagalog) return `Ang test drive ay 100% libre at tumatagal lamang ng 20-30 minuto. Aling araw ngayong linggo ang pinaka-maginhawa para sa iyo upang subukan ang ${modelName}?`;
+    if (isBisaya) return `Libre ug walay bayad ang test drive sulod sa 20-30 minutos. Unsa nga adlaw karong semanaha ang pinakamaayo para masulayan ang ${modelName}?`;
+    if (isChinese) return `VIP 试驾全程免费并配备专属产品专家讲解（约 20-30 分钟）。请问您这周哪一天到店试驾 ${modelName} 最方便？`;
+    return `VIP test drives are 100% complimentary and take just 20-30 minutes. Which day this week works best for your schedule to test drive the ${modelName}?`;
+  }
+
+  // 5. If current topic is dealers
+  if (topic === 'dealers') {
+    const dName = dealerName || (isTagalog ? 'pinakamalapit na showroom' : 'your nearest showroom');
+    if (isTagalog) return `Handa ang aming mga demo units at EV specialists sa ${dName}. Ipag-schedule ba kita ng VIP test drive doon ngayong linggo?`;
+    if (isBisaya) return `Andam na ang mga test drive units sa atong showroom sa ${dName}. Mag-book ba kita og test drive karong semanaha?`;
+    if (isChinese) return `我们官方展厅已备好试驾车辆与专业顾问。需要为您预约本周到店深度体验吗？`;
+    return `Our team at ${dName} has demo vehicles and certified EV specialists ready. Shall I reserve a VIP test drive slot for you this week?`;
+  }
+
+  // 6. If current topic is specs / features
+  if (topic === 'specs' || topic === 'features') {
+    if (isTagalog) return `Nais mo bang maranasan ang instant electric acceleration at tahimik na biyahe ng ${modelName} sa isang libreng test drive ngayong linggo?`;
+    if (isBisaya) return `Gusto ba nimong masulayan ang kusog nga electric motor ug hapsay nga dagan sa ${modelName} pinaagi sa usa ka libreng test drive?`;
+    if (isChinese) return `您想在本周的免费深度试驾中，亲自体验 ${modelName} 优异的即时扭矩加速与静谧智能座舱吗？`;
+    return `Would you like to experience the instant electric acceleration and whisper-quiet ride of the ${modelName} during a complimentary test drive this week?`;
+  }
+
+  // 7. If repeating inquiry on the same model or topic
+  if (context.repeatModelCount > 0 || context.repeatTopicCount > 0) {
+    if (isTagalog) return `Gusto mo bang magreserba ng test drive unit para sa ${modelName} upang mapatunayan mo mismo ang mga bentaheng ito sa kalsada?`;
+    if (isBisaya) return `Gusto ba nimong masulayan ang ${modelName} sa kalsada pinaagi sa usa ka libreng VIP test drive karong semanaha?`;
+    if (isChinese) return `您想亲自开上路感受 ${modelName} 的卓越性能与省心品质吗？我可以立即为您锁定本周的试驾席位。`;
+    return `Would you like to get behind the wheel of the ${modelName} this week so you can verify these advantages firsthand on the road?`;
+  }
+
+  // Default fallback closing question
+  if (isTagalog) return `Nais mo bang mag-book ng libreng VIP test drive sa pinakamalapit na VinFast showroom upang maranasan ang ${modelName}?`;
+  if (isBisaya) return `Gusto ba nimong mag-book og libreng test drive sa labing duol nga showroom aron masulayan ang ${modelName}?`;
+  if (isChinese) return `需要为您预约离您最近的官方展厅，体验 ${modelName} 的免费专属试驾吗？`;
+  return `Would you like me to schedule a complimentary VIP test drive for you in the ${modelName} at your nearest showroom this week?`;
+}
+
 /**
  * Generates responses in languages requested by the customer (Bisaya, Ilonggo, Chinese, Spanish, Japanese, Korean, etc.)
  */
-function generateMultilingualResponse(rawQuery: string, lang: string, isExplicitSwitch: boolean): BrainResponse | null {
+function generateMultilingualResponse(
+  rawQuery: string,
+  lang: string,
+  isExplicitSwitch: boolean,
+  context: ConversationContext
+): BrainResponse | null {
   const q = rawQuery.toLowerCase();
+  const explicitModel = detectModelInText(q);
+  const activeModel = explicitModel?.model || context.lastModel || 'VF 3';
+  const ambiguous = isConfusingOrAmbiguous(rawQuery);
 
   // ----------------------------------------------------
   // 1. BISAYA / CEBUANO (CEB)
@@ -307,10 +592,111 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- VF 9: Luho nga 7-Seater Presidential Flagship SUV simula ₱4,990,000',
           '',
           'MGA SHOWROOM SA VISAYAS UG MINDANAO',
-          '- Cebu: VinFast Cebu Central, Mandaue, ug Dumaguete',
+          '- Cebu: VinFast Cebu Central (A.S. Fortuna), Cebu North Mandaue, Cebu South SRP, ug Dumaguete',
           '- Mindanao: VinFast Davao Buhangin, Tagum, ug General Santos',
           '',
-          'Unsa nga VinFast model ang gusto nimong susihon o i-test drive karon?'
+          generateDynamicClosingQuestion('general', 'VF 3', context, 'CEB')
+        ].join('\n'),
+        mediaUrls: [],
+      };
+    }
+
+    if (ambiguous) {
+      if (context.lastModel) {
+        return {
+          text: [
+            `MAHITUNGOD SA IMONG INQUIRY SA ${context.lastModel}`,
+            '',
+            `Gusto nakong masiguro nga mahatag nako ang eksaktong impormasyon nga imong gikinahanglan kabahin sa ${context.lastModel}:`,
+            '',
+            'MGA IMPORMASYON NGA MAKATABANG',
+            '- Opisyal nga Presyo: May Battery Subscription o Outright purchase',
+            '- Mga Kolor ug Litrato: Kompleto nga gallery sa exterior finishes',
+            '- Libreng VIP Test Drive: Masulayan ang sakyanan sa labing duol nga showroom',
+            '',
+            generateDynamicClosingQuestion('test_drive', context.lastModel, context, 'CEB')
+          ].join('\n'),
+          mediaUrls: [],
+        };
+      }
+      return {
+        text: [
+          'VINFAST SALES CONSULTATION',
+          '',
+          'Aron matabangan tika sa labing maayong paagi, unsa nga bahin sa VinFast ang gusto nimong masayran?',
+          '',
+          'PANGUNANG MGA OPSYON',
+          '- VF 3: Mini Electric SUV gikan ₱590,000 (210 km range)',
+          '- VF 5 Plus: Family Crossover gikan ₱992,000 (326 km range)',
+          '- 29 ka Opisyal nga Showroom: Sa Metro Manila, Cebu, Davao, ug tibuok Pilipinas',
+          '- Libreng VIP Test Drive: Masinati ang 100% electric driving nga walay bayad',
+          '',
+          generateDynamicClosingQuestion('general', 'VF 3', context, 'CEB')
+        ].join('\n'),
+        mediaUrls: [],
+      };
+    }
+
+    // Colors & Photos in Bisaya
+    const isPhoto = q.includes('photo') || q.includes('picture') || q.includes('image') || q.includes('color') || q.includes('kulay') || q.includes('litrato') || q.includes('kolor');
+    if (isPhoto) {
+      const targetModel = q.includes('5') ? 'vf 5' : 'vf 3';
+      const media = MEDIA_MAP[targetModel];
+      const urls = media.map(m => m.url);
+      const name = targetModel === 'vf 5' ? 'VF 5 Plus' : 'VF 3';
+      return {
+        text: [
+          `MGA KOLOR UG LITRATO SA VINFAST ${name}`,
+          '',
+          `Narito ang mga opisyal nga kolor sa ${name} nga mapilian sa Pilipinas:`,
+          '',
+          targetModel === 'vf 3'
+            ? '- Blue\n- Green\n- Light Blue\n- Grey\n- Pink\n- Purple\n- Red\n- White\n- Yellow'
+            : '- Brahminy White\n- Crimson Grey\n- Crimson Red\n- VinFast Blue',
+          '',
+          urls.join('\n\n'),
+          '',
+          generateDynamicClosingQuestion('colors', name, context, 'CEB')
+        ].join('\n'),
+        mediaUrls: urls,
+      };
+    }
+
+    // Test Drive in Bisaya
+    if (q.includes('test drive') || q.includes('drive') || q.includes('subukan') || q.includes('sulayan') || q.includes('book') || q.includes('schedule')) {
+      const nearest = findNearestDealer(rawQuery) || DEALERS.find(d => d.id === 'dealer-cebu-central');
+      return {
+        text: [
+          'LIBRENG VIP TEST DRIVE SA VINFAST',
+          '',
+          'Ang test drive sa VinFast kay 100% libre ug walay bayad:',
+          '',
+          'MGA DETALYE SA TEST DRIVE',
+          '- Gidugayon: 20 hangtod 30 minutos uban sa atong sertipikadong product specialist',
+          '- Kinahanglanon: Pagdala lang og balidong driver\'s license',
+          '- Lokasyon: Magamit sa tanang 29 ka opisyal nga showroom sa tibuok nasod',
+          nearest ? `- Gisugyot nga Showroom: ${nearest.name} (${nearest.address})` : '',
+          '',
+          generateDynamicClosingQuestion('test_drive', activeModel, context, 'CEB', nearest?.name)
+        ].filter(Boolean).join('\n'),
+        mediaUrls: [],
+        suggestedDealer: nearest,
+      };
+    }
+
+    // Features & Specs in Bisaya
+    if (q.includes('range') || q.includes('km') || q.includes('charge') || q.includes('charging') || q.includes('baterya') || q.includes('battery') || q.includes('hp') || q.includes('speed') || q.includes('ground clearance') || q.includes('warranty')) {
+      return {
+        text: [
+          'MGA PANGUNAHING SPECIFICATIONS UG BENTAHE',
+          '',
+          '- Driving Range: 210 km (VF 3) / 326 km (VF 5 Plus) sa matag full charge',
+          '- Madasig nga DC Fast Charging: 10% hangtod 70% sulod sa 36 minutos',
+          '- Ground Clearance: 191 mm sa VF 3 (taas ug dili masangad sa baha o lubak)',
+          '- Garantiya: Hangtod 7-10 ka tuig o 160,000-200,000 km warranty',
+          '- Zero Gastusin sa Gasolina: Makadaginot og mga ₱8,000 matag buwan sa krudo',
+          '',
+          generateDynamicClosingQuestion('specs', activeModel, context, 'CEB')
         ].join('\n'),
         mediaUrls: [],
       };
@@ -320,7 +706,6 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
     if (q.includes('3') || q.includes('vf 3') || q.includes('vf3')) {
       const media = MEDIA_MAP['vf 3'];
       const urls = media.map(m => m.url);
-      const isPhoto = q.includes('photo') || q.includes('picture') || q.includes('color') || q.includes('kulay') || q.includes('litrato');
       return {
         text: [
           'VINFAST VF 3 SA PILIPINAS',
@@ -333,11 +718,10 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- Driving Range: 210 km sa matag full charge',
           '- Ground Clearance: 191 mm (taas ug dili masangad sa baha o libaong)',
           '- Infotainment: 10-inch touch display nga may Apple CarPlay ug Android Auto',
-          '- Kolor: Adunay 9 ka mabulokong exterior finishes (Blue, Green, Light Blue, Grey, Pink, Purple, Red, White, Yellow)',
+          '- Kolor: Adunay 9 ka mabulokong exterior finishes',
           '',
-          isPhoto ? urls.join('\n\n') + '\n' : '',
-          'Gusto ba nimong mag-schedule og libreng test drive sa labing duol nga showroom aron masulayan ang VF 3?'
-        ].filter(Boolean).join('\n'),
+          generateDynamicClosingQuestion('specs', 'VF 3', context, 'CEB')
+        ].join('\n'),
         mediaUrls: urls,
       };
     }
@@ -346,7 +730,6 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
     if (q.includes('5') || q.includes('vf 5') || q.includes('vf5')) {
       const media = MEDIA_MAP['vf 5'];
       const urls = media.map(m => m.url);
-      const isPhoto = q.includes('photo') || q.includes('picture') || q.includes('color') || q.includes('kulay') || q.includes('litrato');
       return {
         text: [
           'VINFAST VF 5 PLUS SA PILIPINAS',
@@ -356,14 +739,13 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           'MGA DETALYE UG PRESYO',
           '- Presyo nga may Battery Subscription: ₱992,000',
           '- Presyo nga Outright (apil na ang baterya): ₱1,191,000',
-          '- Binuwan nga Hulog (Loan Amortization): Gibanabana nga ~₱16,400 matag buwan (36 ka bulan, 20% down payment)',
+          '- Binuwan nga Hulog: Gibanabana nga ~₱16,400 matag buwan (36 ka bulan, 20% down payment)',
           '- Driving Range: 326 km (NEDC) sa matag full charge',
           '- Kusog sa Motor: 134 hp ug 135 Nm instant torque',
           '- Garantiya: 7 ka tuig o 160,000 km warranty',
           '',
-          isPhoto ? urls.join('\n\n') + '\n' : '',
-          'Gusto ba nimong ipag-andam tika og opisyal nga bank financing quotation o mag-book og VIP test drive karong semanaha?'
-        ].filter(Boolean).join('\n'),
+          generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, 'CEB')
+        ].join('\n'),
         mediaUrls: urls,
       };
     }
@@ -383,7 +765,7 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- VF 7: Kusog nga Midsize Crossover (348 hp AWD) gikan ₱1,760,000',
           '- VF 9: 7-Seater Presidential Flagship SUV gikan ₱4,990,000',
           '',
-          'Gusto ba nimong susihon ang performance-oriented nga VF 7 o ang atong luxury 7-seater VF 9?'
+          generateDynamicClosingQuestion('general', 'VF 7', context, 'CEB')
         ].join('\n'),
         mediaUrls: [],
       };
@@ -408,7 +790,7 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- Tagum: National Highway, Tagum City, Davao del Norte',
           '',
           nearest ? `PINAKADUOL NGA DEALER: ${nearest.name}\nAdres: ${nearest.address}\nHotline: ${nearest.hotline}\n` : '',
-          'Gusto ba nimong mag-book og VIP test drive sa pinakaduol nga VinFast showroom karon?'
+          generateDynamicClosingQuestion('dealers', activeModel, context, 'CEB', nearest?.name)
         ].filter(Boolean).join('\n'),
         mediaUrls: [],
         suggestedDealer: nearest,
@@ -429,7 +811,7 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
         '- VF 7: Aero-Dynamic Performance Crossover gikan ₱1,760,000',
         '- VF 9: 7-Seater Luxury Flagship SUV gikan ₱4,990,000',
         '',
-        'Unsa nga VinFast model ang gusto nimong tun-an o i-test drive karong semanaha?'
+        generateDynamicClosingQuestion('general', 'VF 3', context, 'CEB')
       ].join('\n'),
       mediaUrls: [],
     };
@@ -463,7 +845,60 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
       };
     }
 
-    // VF 3 / VF 5 / Default in Ilonggo
+    if (ambiguous) {
+      return {
+        text: [
+          'KONSULTASYON SA PAGBAKAL SANG VINFAST',
+          '',
+          'Para mabuligan ta ikaw sang maayo, ano nga bahin sang VinFast ang gusto mo mahibal-an?',
+          '',
+          'MGA PANGUNANG PILIANAN',
+          '- VF 3: Urban Mini Electric SUV halin ₱590,000',
+          '- VF 5 Plus: Family Crossover halin ₱992,000',
+          '- 29 ka Awtorisadong Showroom sa bilog nga Pilipinas',
+          '- Libre nga VIP Test Drive sa pinakamalapit nga sanga',
+          '',
+          'Gusto mo bala mag-book sang libre nga test drive para maeksperyensyahan ang aton mga de-kuryente nga salakyan?'
+        ].join('\n'),
+        mediaUrls: [],
+      };
+    }
+
+    if (q.includes('photo') || q.includes('picture') || q.includes('color') || q.includes('litrato') || q.includes('kolor')) {
+      const urls = MEDIA_MAP['vf 3'].map(m => m.url);
+      return {
+        text: [
+          'MGA KOLOR KAG LITRATO SANG VINFAST VF 3',
+          '',
+          'May 9 ka matahom nga kolor ang VF 3 para sa imo pagsakay sa siyudad:',
+          '',
+          '- Blue\n- Green\n- Light Blue\n- Grey\n- Pink\n- Purple\n- Red\n- White\n- Yellow',
+          '',
+          urls.join('\n\n'),
+          '',
+          'Diin nga kolor ang gusto mo makit-an sa personal sa aton pinakamalapit nga showroom?'
+        ].join('\n'),
+        mediaUrls: urls,
+      };
+    }
+
+    if (q.includes('test drive') || q.includes('drive') || q.includes('subukan') || q.includes('tilaw')) {
+      const nearest = findNearestDealer(rawQuery) || DEALERS.find(d => d.id === 'dealer-iloilo') || DEALERS.find(d => d.id === 'dealer-bgc');
+      return {
+        text: [
+          `LIBRE NGA VIP TEST DRIVE SANG VINFAST ${activeModel}`,
+          '',
+          `Ang aton test drive para sa ${activeModel} 100% libre kag nagadugay sang 20-30 minutos upod ang aton product specialist.`,
+          'Kinahanglan mo lang magdala sang balido nga driver\'s license.',
+          nearest ? `- Gisugyot nga Showroom: ${nearest.name} (${nearest.address})` : '- May 29 kita ka awtorisadong showroom sa bilog nga pungsod',
+          '',
+          `Luyag mo bala mag-iskedyul sang test drive para sa ${activeModel} subong nga semana sa pinakamalapit nga showroom?`
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: nearest,
+      };
+    }
+
     if (q.includes('3') || q.includes('vf 3') || q.includes('vf3')) {
       return {
         text: [
@@ -549,7 +984,110 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- 支持官方电池租赁（Battery Subscription）计划，大幅降低首付与购车门槛',
           '- 相比燃油车节省高达 74% 能源支出，享超长官方质保与 24/7 全天候道路救援',
           '',
-          '请问您想了解哪一款车型的详细配置报价、月供分期测算，或为您预约 VIP 试驾？'
+          generateDynamicClosingQuestion('general', 'VF 3', context, 'ZH')
+        ].join('\n'),
+        mediaUrls: [],
+      };
+    }
+
+    if (ambiguous) {
+      if (context.lastModel) {
+        return {
+          text: [
+            `关于您咨询的 VINFAST ${context.lastModel}`,
+            '',
+            `为了确保为您提供最精准的购车建议，关于 ${context.lastModel} 您想了解：`,
+            '',
+            '推荐了解项目',
+            '- 官方售价与银行分期测算（支持 20% 低首付方案）',
+            '- 实车车身颜色与高清图库',
+            '- 核心三电续航、充电时间与官方质保政策',
+            '- 预约就近展厅免费 VIP 深度试驾',
+            '',
+            generateDynamicClosingQuestion('test_drive', context.lastModel, context, 'ZH')
+          ].join('\n'),
+          mediaUrls: [],
+        };
+      }
+      return {
+        text: [
+          'VINFAST 官方购车专属咨询',
+          '',
+          '为了协助您挑选最适合的纯电车型，请问您更关注哪一方面？',
+          '',
+          '热门推荐方向',
+          '- VF 3：都市灵动微型纯电 SUV，起售价 ₱590,000（210 公里续航）',
+          '- VF 5 Plus：家用紧凑型跨界 SUV，起售价 ₱992,000（326 公里续航）',
+          '- 全菲 29 家官方授权展厅与售后网络',
+          '- VIP 专属免费试驾与现场极速预审',
+          '',
+          generateDynamicClosingQuestion('general', 'VF 3', context, 'ZH')
+        ].join('\n'),
+        mediaUrls: [],
+      };
+    }
+
+    // Colors & Photos in Chinese
+    const isPhotoZh = q.includes('photo') || q.includes('picture') || q.includes('image') || q.includes('color') || q.includes('颜色') || q.includes('图片') || q.includes('照片') || q.includes('外观');
+    if (isPhotoZh) {
+      const targetModel = q.includes('5') ? 'vf 5' : 'vf 3';
+      const media = MEDIA_MAP[targetModel];
+      const urls = media.map(m => m.url);
+      const name = targetModel === 'vf 5' ? 'VF 5 Plus' : 'VF 3';
+      return {
+        text: [
+          `VINFAST ${name} 车身颜色与实车图库`,
+          '',
+          `以下为 ${name} 在菲律宾官方发售的车身配色方案：`,
+          '',
+          targetModel === 'vf 3'
+            ? '- 蓝色 (Blue)\n- 绿色 (Green)\n- 浅蓝 (Light Blue)\n- 灰色 (Grey)\n- 粉色 (Pink)\n- 紫色 (Purple)\n- 红色 (Red)\n- 白色 (White)\n- 黄色 (Yellow)'
+            : '- 纯净白 (Brahminy White)\n- 绯红灰 (Crimson Grey)\n- 绯红红 (Crimson Red)\n- 品牌蓝 (VinFast Blue)',
+          '',
+          urls.join('\n\n'),
+          '',
+          generateDynamicClosingQuestion('colors', name, context, 'ZH')
+        ].join('\n'),
+        mediaUrls: urls,
+      };
+    }
+
+    // Test Drive in Chinese
+    if (q.includes('test drive') || q.includes('试驾') || q.includes('试乘') || q.includes('预约') || q.includes('试车')) {
+      const nearest = findNearestDealer(rawQuery) || DEALERS.find(d => d.id === 'dealer-bgc');
+      return {
+        text: [
+          `VINFAST ${activeModel} 菲律宾官方 VIP 试驾服务`,
+          '',
+          `VinFast VIP 试驾服务全程免费，为您提供专业尊贵的 ${activeModel} 实车体验：`,
+          '',
+          '试驾核心须知',
+          `- 试驾车型：${activeModel}（全系车型现车支持深度试乘试驾）`,
+          '- 试驾时长：约 20-30 分钟，由官方认证产品专家全程陪同讲解',
+          '- 试驾证件：仅需携带本人有效菲律宾或国际驾照',
+          '- 网点覆盖：全菲 29 家官方展厅均提供现车试驾',
+          nearest ? `- 推荐就近展厅：${nearest.name}（地址：${nearest.address} | 热线：${nearest.hotline}）` : '',
+          '',
+          generateDynamicClosingQuestion('test_drive', activeModel, context, 'ZH', nearest?.name)
+        ].filter(Boolean).join('\n'),
+        mediaUrls: [],
+        suggestedDealer: nearest,
+      };
+    }
+
+    // Features & Specs in Chinese
+    if (q.includes('续航') || q.includes('充电') || q.includes('马力') || q.includes('功率') || q.includes('离地间隙') || q.includes('质保') || q.includes('配置') || q.includes('电池')) {
+      return {
+        text: [
+          'VINFAST 核心技术参数与优势',
+          '',
+          '- 纯电续航：VF 3 拥有 210 公里满电续航；VF 5 Plus 达到 326 公里（NEDC）',
+          '- 高效直流快充：36 分钟即可从 10% 充至 70%，支持家用慢充与全国公桩',
+          '- 底盘通过性：VF 3 离地间隙达 191 mm，轻松应对菲律宾雨季积水与坑洼路面',
+          '- 官方超长质保：整车享 7-10 年或 160,000-200,000 公里官方全面保障',
+          '- 零燃油支出：相比燃油车每月可节省约 ₱8,000 能源开支，且享大马尼拉限行豁免',
+          '',
+          generateDynamicClosingQuestion('specs', activeModel, context, 'ZH')
         ].join('\n'),
         mediaUrls: [],
       };
@@ -570,11 +1108,9 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- 纯电续航里程：210 公里（满电状态）',
           '- 最小离地间隙：191 毫米（通过性优异，轻松应对积水与复杂路况）',
           '- 智能座舱：配备 10 英寸悬浮触控屏，支持 Apple CarPlay 与 Android Auto',
-          '- 外观配色：提供 9 款个性时尚车身色彩（蓝色、绿色、浅蓝、灰色、粉色、紫色、红色、白色、黄色）',
+          '- 外观配色：提供 9 款个性时尚车身色彩',
           '',
-          urls.join('\n\n'),
-          '',
-          '请问您想查看 VF 3 的实车外观图库，还是为您安排就近展厅试驾？'
+          generateDynamicClosingQuestion('specs', 'VF 3', context, 'ZH')
         ].join('\n'),
         mediaUrls: urls,
       };
@@ -590,39 +1126,16 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           'VF 5 Plus 是菲律宾家庭与日常通勤最理想的高性价比智能纯电跨界车：',
           '',
           '官方售价与金融测算',
-          '- 电池租赁方案售价：₱992,000（每月电池租金 ₱3,500）',
+          '- 电池租赁方案售价：₱992,000',
           '- 含电池整车购买售价：₱1,191,000',
           '- 预估月供：约 ₱16,400 / 月（按 36 期，20% 首付测算）',
           '- 纯电续航里程：326 公里（NEDC 工况）',
           '- 动力性能：134 马力，135 牛·米即时扭矩输出',
           '- 质保承诺：7 年或 160,000 公里官方整车质保',
           '',
-          urls.join('\n\n'),
-          '',
-          '请问您是否需要为您定制 20% 首付的合作银行贷款方案，或预约本周试驾？'
+          generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, 'ZH')
         ].join('\n'),
         mediaUrls: urls,
-      };
-    }
-
-    // VF 8 clarification in Chinese
-    if (q.includes('vf 8') || q.includes('vf8')) {
-      return {
-        text: [
-          '车型供应说明',
-          '',
-          '谨此告知，VinFast VF 8 目前暂未在菲律宾市场上市销售。',
-          '',
-          '菲律宾官方现售全系车型',
-          '- VF 3：城市微型纯电 SUV，起售价 ₱590,000',
-          '- VF 5 Plus：紧凑型家用跨界车，起售价 ₱992,000',
-          '- VF 6：意式轻奢跨界车，起售价 ₱1,499,000',
-          '- VF 7：高性能破风跨界 SUV（348 马力 AWD），起售价 ₱1,760,000',
-          '- VF 9：旗舰 7 座豪华全尺寸 SUV，起售价 ₱4,990,000',
-          '',
-          '请问您是否想了解性能优异的 VF 7，或是旗舰级 7 座 VF 9？'
-        ].join('\n'),
-        mediaUrls: [],
       };
     }
 
@@ -642,7 +1155,7 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           '- 棉兰老地区：达沃 Buhangin、桑托斯将军城 GenSan、塔古姆',
           '',
           nearest ? `为您推荐最近展厅：${nearest.name}\n地址：${nearest.address}\n服务热线：${nearest.hotline}\n` : '',
-          '请问您想预约前往哪家展厅体验 VIP 试驾，或为您测算详细分期？'
+          generateDynamicClosingQuestion('dealers', activeModel, context, 'ZH', nearest?.name)
         ].filter(Boolean).join('\n'),
         mediaUrls: [],
         suggestedDealer: nearest,
@@ -663,7 +1176,7 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
         '- VF 7：高性能破风运动跨界 SUV，起售价 ₱1,760,000',
         '- VF 9：旗舰 7 座豪华全尺寸 SUV，起售价 ₱4,990,000',
         '',
-        '请问您今天想了解哪一款车型的详细分期方案，或者需要为您预约 VIP 试驾吗？'
+        generateDynamicClosingQuestion('general', 'VF 3', context, 'ZH')
       ].join('\n'),
       mediaUrls: [],
     };
@@ -724,7 +1237,7 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
           'ネットワークと特典',
           '- マニラ首都圏（BGC、グリーンヒルズ等）、セブ、ダバオを含む全国29の公式ディーラー網',
           '- ガソリン車と比較して約74%の燃料費削減',
-          '- 業界最長クラスの公式保証および24時間年中無休のロードサービス',
+          '- 業界最長クラスの公式保証および24時間年中无休のロードサービス',
           '',
           '本日はどのモデルのスペック詳細、ローン試算、またはVIP試乗予約をご希望でしょうか？'
         ].join('\n'),
@@ -842,13 +1355,20 @@ function generateMultilingualResponse(rawQuery: string, lang: string, isExplicit
  * - Exact media URLs on their own line when photos are requested
  * - Natural closing question on its own line without headers
  */
-export function generateSalesResponse(rawQuery: string, language: string = 'EN'): BrainResponse {
+export function generateSalesResponse(
+  rawQuery: string,
+  language: string = 'EN',
+  history: ChatMessage[] = []
+): BrainResponse {
   const query = rawQuery.trim();
   const q = query.toLowerCase();
 
-  // 1. Multilingual detection & routing
+  // 1. Extract conversational context from history
+  const context = extractConversationContext(history, rawQuery);
+
+  // 2. Multilingual detection & routing
   const { lang, isExplicitSwitch } = detectLanguage(rawQuery, language);
-  const multiResponse = generateMultilingualResponse(rawQuery, lang, isExplicitSwitch);
+  const multiResponse = generateMultilingualResponse(rawQuery, lang, isExplicitSwitch, context);
   if (multiResponse) {
     return {
       ...multiResponse,
@@ -858,103 +1378,423 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
 
   const isTagalog = lang === 'PH';
 
-  // Check if user is asking about photos, pictures, colors, or looks
-  const isPhotoRequest = q.includes('photo') || q.includes('picture') || q.includes('image') || q.includes('look') || q.includes('color') || q.includes('kulay') || q.includes('litrato') || q.includes('larawan') || q.includes('gallery');
+  // 3. Resolve active model from query or previous context
+  const explicitModel = detectModelInText(q);
+  const activeModel = explicitModel?.model || context.lastModel || 'VF 3';
+  const activeModelId = explicitModel?.id || context.lastModelId || 'vf-3';
 
-  if (isPhotoRequest) {
-    if (q.includes('3') || q.includes('vf 3') || q.includes('vf3')) {
-      const media = MEDIA_MAP['vf 3'];
-      const urls = media.map(m => m.url);
-      const urlLines = urls.join('\n\n');
-
+  // 4. Handle ambiguous, confusing, or non-committal queries directly leading to a close
+  if (isConfusingOrAmbiguous(rawQuery)) {
+    if (context.lastModel) {
       const text = isTagalog
         ? [
-            'MGA KULAY AT LITRATO NG VINFAST VF 3',
+            `TUNGKOL SA IYONG INQUIRY SA ${context.lastModel}`,
             '',
-            'Ang VF 3 ay may 9 na makukulay at kapana-panabik na exterior colors para sa iyong urban lifestyle:',
+            `Nais kong masiguro na maibibigay ko ang eksaktong impormasyon na kailangan mo tungkol sa ${context.lastModel}:`,
             '',
-            '- Blue',
-            '- Green',
-            '- Light Blue',
-            '- Grey',
-            '- Pink',
-            '- Purple',
-            '- Red',
-            '- White',
-            '- Yellow',
+            'MGA MAAARI KONG MAITULONG NGAYON',
+            '- Opisyal na Presyo: May Battery Subscription o Outright purchase',
+            '- Mga Kulay at Litrato: 9 na makukulay na exterior finishes',
+            '- Driving Range: 210 km bawat charge na may 36-minutong DC fast charging',
+            '- Libreng VIP Test Drive: 30-minutong karanasan sa alinman sa aming 29 showrooms',
             '',
-            urlLines,
-            '',
-            'Aling kulay ang nais mong makita nang personal sa pinakamalapit na VinFast showroom?'
+            generateDynamicClosingQuestion('test_drive', context.lastModel, context, lang)
           ].join('\n')
         : [
-            'VINFAST VF 3 COLORWAY SHOWCASE',
+            `REGARDING YOUR INQUIRY ON THE ${context.lastModel}`,
             '',
-            'The VF 3 is available in 9 eye-catching colors tailored for modern city driving:',
+            `I want to ensure I provide the exact information you need regarding the ${context.lastModel}:`,
             '',
-            '- Blue',
-            '- Green',
-            '- Light Blue',
-            '- Grey',
-            '- Pink',
-            '- Purple',
-            '- Red',
-            '- White',
-            '- Yellow',
+            'HOW I CAN ASSIST YOU TODAY',
+            '- Official SRP: Battery Subscription or Outright purchase options',
+            '- Exterior Colors and Photos: Complete gallery of factory finishes',
+            '- Driving Range: Real-world range with 36-minute DC fast charging',
+            '- Complimentary VIP Test Drive: 30-minute experience at any of our 29 showrooms',
             '',
-            urlLines,
-            '',
-            'Which color variant would you like to see in person at your nearest VinFast showroom?'
+            generateDynamicClosingQuestion('test_drive', context.lastModel, context, lang)
           ].join('\n');
 
       return {
         text,
-        mediaUrls: urls,
+        mediaUrls: [],
         quickActions: [
-          { label: isTagalog ? 'Mag-book ng VF 3 Test Drive' : 'Book VF 3 Test Drive', action: 'book_test_drive', payload: 'vf-3' },
-          { label: isTagalog ? 'Kwentahin ang VF 3 Monthly' : 'Calculate VF 3 Monthly', action: 'calculate_model', payload: 'vf-3' },
+          { label: isTagalog ? `I-test Drive ang ${context.lastModel}` : `Test Drive ${context.lastModel}`, action: 'book_test_drive', payload: context.lastModelId || 'vf-3' },
+          { label: isTagalog ? 'Kwentahin ang Buwanan' : 'Calculate Monthly', action: 'calculate_model', payload: context.lastModelId || 'vf-3' },
         ]
       };
     }
 
-    if (q.includes('5') || q.includes('vf 5') || q.includes('vf5')) {
-      const media = MEDIA_MAP['vf 5'];
-      const urls = media.map(m => m.url);
-      const urlLines = urls.join('\n\n');
+    const text = isTagalog
+      ? [
+          'KONSULTASYON SA PAGBILI NG VINFAST',
+          '',
+          'Upang maibigay ko ang pinaka-angkop na impormasyon para sa iyong pangangailangan, aling bahagi ng VinFast ang nais mong malaman?',
+          '',
+          'MGA PANGUNAHING OPSYON',
+          '- VF 3: Urban Mini Electric SUV simula ₱590,000 (210 km range)',
+          '- VF 5 Plus: Family Compact Crossover simula ₱949,000 (326 km range)',
+          '- 29 Awtorisadong Dealership: Showrooms sa Metro Manila, Luzon, Visayas, at Mindanao',
+          '- Libreng VIP Test Drive: Personal na pagsubok kasama ang aming sertipikadong product specialist',
+          '',
+          generateDynamicClosingQuestion('general', 'VF 3', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST SALES CONSULTATION',
+          '',
+          'To ensure I provide the most helpful guidance for your driving needs, which aspect of VinFast would you like to explore?',
+          '',
+          'POPULAR STARTING POINTS',
+          '- VF 3: Urban Mini Electric SUV starting at ₱590,000 (210 km range)',
+          '- VF 5 Plus: Family Compact Crossover starting at ₱949,000 (326 km range)',
+          '- 29 Authorized Dealerships: Showrooms across Metro Manila, Luzon, Visayas, and Mindanao',
+          '- Complimentary VIP Test Drive: Hands-on driving experience with a certified product specialist',
+          '',
+          generateDynamicClosingQuestion('general', 'VF 3', context, lang)
+        ].join('\n');
 
+    return {
+      text,
+      mediaUrls: [],
+      quickActions: [
+        { label: isTagalog ? 'Suriin ang VF 3' : 'Explore VF 3', action: 'calculate_model', payload: 'vf-3' },
+        { label: isTagalog ? 'Suriin ang VF 5 Plus' : 'Explore VF 5 Plus', action: 'calculate_model', payload: 'vf-5-plus' },
+        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive' },
+      ]
+    };
+  }
+
+  // 5. Photos, pictures, colors, gallery requests
+  const isPhotoRequest = q.includes('photo') || q.includes('picture') || q.includes('image') || q.includes('look') || q.includes('color') || q.includes('kulay') || q.includes('litrato') || q.includes('larawan') || q.includes('gallery');
+
+  if (isPhotoRequest) {
+    const targetKey = activeModelId === 'vf-5-plus' ? 'vf 5' : activeModelId === 'vf-6' ? 'vf 6' : activeModelId === 'vf-7' ? 'vf 7' : 'vf 3';
+    const media = MEDIA_MAP[targetKey] || MEDIA_MAP['vf 3'];
+    const urls = media.map(m => m.url);
+    const urlLines = urls.join('\n\n');
+
+    const text = isTagalog
+      ? [
+          `MGA KULAY AT LITRATO NG VINFAST ${activeModel}`,
+          '',
+          `Narito ang mga opisyal na exterior colors para sa ${activeModel}:`,
+          '',
+          media.map(m => `- ${m.color}`).join('\n'),
+          '',
+          urlLines,
+          '',
+          generateDynamicClosingQuestion('colors', activeModel, context, lang)
+        ].join('\n')
+      : [
+          `VINFAST ${activeModel} COLORWAYS AND PHOTO GALLERY`,
+          '',
+          `Here are the official factory exterior finishes for the ${activeModel}:`,
+          '',
+          media.map(m => `- ${m.color}`).join('\n'),
+          '',
+          urlLines,
+          '',
+          generateDynamicClosingQuestion('colors', activeModel, context, lang)
+        ].join('\n');
+
+    return {
+      text,
+      mediaUrls: urls,
+      quickActions: [
+        { label: isTagalog ? `Mag-book ng ${activeModel} Test Drive` : `Book ${activeModel} Test Drive`, action: 'book_test_drive', payload: activeModelId },
+        { label: isTagalog ? 'Kwentahin ang Buwanan' : 'Calculate Monthly', action: 'calculate_model', payload: activeModelId },
+      ]
+    };
+  }
+
+  // 6. Test Drive specific requests
+  const isTestDriveRequest = q.includes('test drive') || q.includes('test-drive') || q.includes('subukan') || q.includes('drive') || q.includes('try') || q.includes('book') || q.includes('schedule') || q.includes('appointment');
+
+  if (isTestDriveRequest) {
+    const nearest = findNearestDealer(rawQuery);
+    const dealerMention = nearest ? (isTagalog ? ` sa ${nearest.name}` : ` at ${nearest.name}`) : '';
+
+    const text = isTagalog
+      ? [
+          'LIBRENG VIP TEST DRIVE SA VINFAST PHILIPPINES',
+          '',
+          `Maaari mong maranasan ang ${activeModel} sa isang libreng VIP test drive${dealerMention}:`,
+          '',
+          'MGA DETALYE NG TEST DRIVE',
+          '- 100% Libre: Walang anumang bayad o obligasyon',
+          '- Tagal: 20 hangtod 30 minuto kasama ang sertipikadong VinFast product specialist',
+          '- Dalhin: Isang balidong Philippine o international driver\'s license',
+          '- 29 Showrooms: May demo units sa lahat ng aming awtorisadong dealership sa buong bansa',
+          nearest ? `- Inirerekomendang Showroom: ${nearest.name} (${nearest.address} | Hotline: ${nearest.hotline})` : '',
+          '',
+          generateDynamicClosingQuestion('test_drive', activeModel, context, lang, nearest?.name)
+        ].filter(Boolean).join('\n')
+      : [
+          'COMPLIMENTARY VINFAST VIP TEST DRIVE',
+          '',
+          `You are invited to experience the ${activeModel} firsthand during a VIP test drive${dealerMention}:`,
+          '',
+          'TEST DRIVE DETAILS',
+          '- 100% Complimentary: Completely free with zero obligation',
+          '- Duration: 20 to 30 minutes with a certified VinFast EV consultant',
+          '- Requirements: Simply present a valid Philippine or international driver\'s license',
+          '- 29 Showrooms: Demo units ready across all authorized dealerships nationwide',
+          nearest ? `- Recommended Showroom: ${nearest.name} (${nearest.address} | Hotline: ${nearest.hotline})` : '',
+          '',
+          generateDynamicClosingQuestion('test_drive', activeModel, context, lang, nearest?.name)
+        ].filter(Boolean).join('\n');
+
+    return {
+      text,
+      mediaUrls: [],
+      suggestedDealer: nearest,
+      quickActions: [
+        { label: isTagalog ? `Mag-book para sa ${activeModel}` : `Book for ${activeModel}`, action: 'book_test_drive', payload: activeModelId },
+      ]
+    };
+  }
+
+  // 7. Features & Technical Specs requests
+  const isFeatureRequest = q.includes('charge') || q.includes('charging') || q.includes('range') || q.includes('km') || q.includes('hp') || q.includes('speed') || q.includes('ground clearance') || q.includes('motor') || q.includes('torque') || q.includes('warranty') || q.includes('safety') || q.includes('adas') || q.includes('spec') || q.includes('feature');
+
+  if (isFeatureRequest) {
+    if (activeModelId === 'vf-3') {
       const text = isTagalog
         ? [
-            'MGA KULAY NG VINFAST VF 5 PLUS',
+            'MGA PANGUNAHING SPECIFICATIONS NG VINFAST VF 3',
             '',
-            'Narito ang mga opisyal na factory exterior finishes para sa VF 5 Plus:',
+            'Driving Range: 210 km (NEDC) sa bawat buong charge',
+            'Kapasidad ng Baterya: 18.64 kWh LFP battery',
+            'Mabilis na DC Charging: 10% hanggang 70% sa loob lamang ng 36 minuto',
+            'Lakas ng Motor: 43 hp at 110 Nm instant electric torque',
+            'Ground Clearance: Mataas na 191 mm (hindi masangad sa baha o lubak)',
+            'Infotainment: 10-inch Touchscreen na may Apple CarPlay at Android Auto',
+            'Garantiya sa Sasakyan: 7 Taon o 160,000 km',
+            'Garantiya sa Baterya: 8 Taon o walang limitasyong mileage sa ilalim ng subscription',
             '',
-            '- Brahminy White',
-            '- Crimson Grey',
-            '- Crimson Red',
-            '- VinFast Blue',
-            '',
-            urlLines,
-            '',
-            'Nais mo bang ipag-schedule kita ng test drive para sa VF 5 Plus ngayong linggo upang maranasan mo ito nang personal?'
+            generateDynamicClosingQuestion('specs', 'VF 3', context, lang)
           ].join('\n')
         : [
-            'VINFAST VF 5 PLUS COLORWAYS',
+            'VINFAST VF 3 KEY TECHNICAL SPECIFICATIONS',
             '',
-            'Here are the official factory exterior finishes for the VF 5 Plus:',
+            'Driving Range: 210 km (NEDC) per full charge',
+            'Battery Capacity: 18.64 kWh LFP battery pack',
+            'DC Fast Charging: 10% to 70% in only 36 minutes',
+            'Electric Motor: 43 hp and 110 Nm instant electric torque',
+            'Ground Clearance: High 191 mm (confidently clears floods and rough roads)',
+            'Infotainment: 10-inch Touchscreen with Apple CarPlay and Android Auto',
+            'Vehicle Warranty: 7 Years or 160,000 km',
+            'Battery Warranty: 8 Years or unlimited mileage under battery subscription',
             '',
-            '- Brahminy White',
-            '- Crimson Grey',
-            '- Crimson Red',
-            '- VinFast Blue',
-            '',
-            urlLines,
-            '',
-            'Would you like me to schedule a test drive for you in the VF 5 Plus this week so you can experience it firsthand?'
+            generateDynamicClosingQuestion('specs', 'VF 3', context, lang)
           ].join('\n');
 
       return {
         text,
-        mediaUrls: urls,
+        mediaUrls: [],
+        quickActions: [
+          { label: isTagalog ? 'Mag-book ng VF 3 Test Drive' : 'Book VF 3 Test Drive', action: 'book_test_drive', payload: 'vf-3' },
+          { label: isTagalog ? 'Kwentahin ang VF 3' : 'Calculate VF 3', action: 'calculate_model', payload: 'vf-3' },
+        ]
+      };
+    }
+
+    if (activeModelId === 'vf-5-plus') {
+      const text = isTagalog
+        ? [
+            'MGA PANGUNAHING SPECIFICATIONS NG VINFAST VF 5 PLUS',
+            '',
+            'Driving Range: 326 km (NEDC) sa bawat buong charge',
+            'Kapasidad ng Baterya: 37.23 kWh Ternary Lithium battery',
+            'Lakas ng Motor: 134 hp at 135 Nm instant torque',
+            'Akselerasyon: Mabilis at maayos na arangkada para sa expressway at lungsod',
+            'Ground Clearance: 182 mm',
+            'Kapasidad: 5 Pasahero na may maluwag na cabin at cargo space',
+            'Kaligtasan: 6 na Airbags, Rear Parking Sensors, ABS, EBD, at ESC',
+            'Garantiya sa Sasakyan: 7 Taon o 160,000 km',
+            '',
+            generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, lang)
+          ].join('\n')
+        : [
+            'VINFAST VF 5 PLUS KEY TECHNICAL SPECIFICATIONS',
+            '',
+            'Driving Range: 326 km (NEDC) per full charge',
+            'Battery Capacity: 37.23 kWh Ternary Lithium battery pack',
+            'Electric Motor: 134 hp and 135 Nm instant torque',
+            'Acceleration: Swift, seamless city overtaking and expressway cruising',
+            'Ground Clearance: 182 mm',
+            'Seating Capacity: 5 Passengers with spacious legroom and generous cargo area',
+            'Safety Suite: 6 Airbags, Rear Parking Sensors, ABS, EBD, and ESC',
+            'Vehicle Warranty: 7 Years or 160,000 km',
+            '',
+            generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, lang)
+          ].join('\n');
+
+      return {
+        text,
+        mediaUrls: [],
+        quickActions: [
+          { label: isTagalog ? 'Mag-book ng VF 5 Plus Test Drive' : 'Book VF 5 Plus Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
+          { label: isTagalog ? 'Kwentahin ang VF 5 Plus' : 'Calculate VF 5 Plus', action: 'calculate_model', payload: 'vf-5-plus' },
+        ]
+      };
+    }
+  }
+
+  // 8. Model-specific overview (VF 3, VF 5 Plus, VF 6, VF 7, VF 9) with Anti-Repetition
+  if (q.includes('vf 3') || q.includes('vf3')) {
+    if (context.repeatModelCount > 0) {
+      const text = isTagalog
+        ? [
+            'PANG-ARAW-ARAW NA BENTAHE NG VINFAST VF 3',
+            '',
+            'Dahil seryoso ka sa pagsusuri ng VF 3, narito ang mga praktikal na benepisyo sa araw-araw na pagmamay-ari sa Pilipinas:',
+            '',
+            'MALAKING MATITIPID SA PANG-ARAW-ARAW',
+            '- Matipid sa Enerhiya: Ang gastos sa pag-charge ay humigit-kumulang ₱1.20 bawat kilometro lamang kontra sa higit ₱6.50 kada kilometro ng gasolinang sasakyan.',
+            '- Buwanang Matitipid sa Krudo: Karaniwang nakakatipid ng ₱7,500 hanggang ₱9,000 bawat buwan ang mga motorista sa siyudad.',
+            '',
+            'EVIDA LAW AT PERKS SA KALYE (REPUBLIC ACT 11697)',
+            '- Walang Number Coding: 100% exempt ang VF 3 sa MMDA number coding sa buong Metro Manila. Makakabiyahe ka araw-araw nang walang kaba.',
+            '- Priority Registration: Priyoridad sa LTO registration at may diskwento sa renewal alinsunod sa batas.',
+            '',
+            'MABILIS NA CHARGING AT GARANTIYA',
+            '- Mabilis na DC Fast Charging: Mula 10% hanggang 70% sa loob lamang ng 36 minuto sa ating mga DC fast-chargers.',
+            '- 7 Taong Warranty: May 7 taon o 160,000 km warranty para sa iyong buong kapanatagan.',
+            '',
+            generateDynamicClosingQuestion('specs', 'VF 3', context, lang)
+          ].join('\n')
+        : [
+            'DAILY OWNERSHIP ADVANTAGES OF THE VINFAST VF 3',
+            '',
+            'As you explore the VF 3 further, here are the compelling day-to-day ownership benefits in the Philippines:',
+            '',
+            'SIGNIFICANT OPERATING SAVINGS',
+            '- Fuel Cost Difference: Charging costs approximately ₱1.20 per km compared to over ₱6.50 per km on gasoline vehicles.',
+            '- Monthly Commute Savings: Typical Manila city commuters save between ₱7,500 and ₱9,000 every single month on fuel alone.',
+            '',
+            'EVIDA LAW PRIVILEGES (REPUBLIC ACT 11697)',
+            '- Zero Number Coding Restrictions: 100% exempt from MMDA number coding across Metro Manila. Drive every day of the week with complete freedom.',
+            '- Priority LTO Processing: Enjoy fast-track registration and dedicated green plate privileges under national EV law.',
+            '',
+            'RAPID CHARGING AND UNBEATABLE WARRANTY',
+            '- Fast DC Charging: Recharges from 10% to 70% in just 36 minutes at VinFast high-power DC fast stations.',
+            '- 7-Year Official Warranty: Comprehensive 7-year or 160,000 km vehicle warranty for complete peace of mind.',
+            '',
+            generateDynamicClosingQuestion('specs', 'VF 3', context, lang)
+          ].join('\n');
+
+      return {
+        text,
+        mediaUrls: [],
+        quickActions: [
+          { label: isTagalog ? 'Mag-book ng VF 3 Test Drive' : 'Book VF 3 Test Drive', action: 'book_test_drive', payload: 'vf-3' },
+          { label: isTagalog ? 'Kwentahin ang Buwanang Hulog' : 'Calculate Monthly Amortization', action: 'calculate_model', payload: 'vf-3' },
+        ]
+      };
+    }
+
+    const text = isTagalog
+      ? [
+          'PANGKALAHATANG TINGIN SA VINFAST VF 3',
+          '',
+          'Ang VF 3 ay isang modernong mini electric SUV na binuo upang baguhin ang iyong pang-araw-araw na biyahe sa lungsod:',
+          '',
+          'MGA PANGUNAHING DETALYE',
+          'Model: VF 3',
+          'Kategorya: Mini Electric SUV',
+          'Outright SRP: ₱745,000',
+          'Battery Subscription SRP: ₱590,000',
+          'Range: 210 km NEDC',
+          'Kapasidad ng Baterya: 18.64 kWh',
+          'Electric Motor: 43 hp / 110 Nm torque',
+          'Ground Clearance: 191 mm',
+          'Kapasidad: 4 na Pasahero',
+          'Infotainment: 10-inch Touchscreen',
+          '',
+          'MGA BENTAHE',
+          '- Ang mataas na 191 mm ground clearance ay kayang-kaya ang baha at lubak sa kalsada.',
+          '- Maliit ang turning radius kaya napakadaling iparada sa masisikip na mall at eskinita.',
+          '- Mabilis na DC charging mula 10% hanggang 70% sa loob lamang ng 36 minuto.',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 3', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST VF 3 OVERVIEW',
+          '',
+          'The VF 3 is an urban mini electric SUV engineered to transform your daily city drive:',
+          '',
+          'KEY SPECIFICATIONS',
+          'Model: VF 3',
+          'Segment: Mini Electric SUV',
+          'Outright SRP: ₱745,000',
+          'Battery Subscription SRP: ₱590,000',
+          'Driving Range: 210 km NEDC',
+          'Battery Capacity: 18.64 kWh',
+          'Electric Motor: 43 hp / 110 Nm torque',
+          'Ground Clearance: 191 mm',
+          'Seating: 4 Passengers',
+          'Infotainment: 10-inch Screen',
+          '',
+          'KEY ADVANTAGES',
+          '- High 191 mm ground clearance easily navigates uneven roads and rainy season floods.',
+          '- Compact exterior with nimble turning radius makes parking in crowded malls and tight streets effortless.',
+          '- Fast DC charging takes you from 10% to 70% in only 36 minutes.',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 3', context, lang)
+        ].join('\n');
+
+    return {
+      text,
+      mediaUrls: [
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf3%20blue.png',
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf3%20yellow.png',
+      ],
+      quickActions: [
+        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 3' : 'Calculate VF 3 Monthly', action: 'calculate_model', payload: 'vf-3' },
+        { label: isTagalog ? 'Mag-book ng VF 3 Test Drive' : 'Book VF 3 Test Drive', action: 'book_test_drive', payload: 'vf-3' },
+      ]
+    };
+  }
+
+  if (q.includes('vf 5') || q.includes('vf5')) {
+    if (context.repeatModelCount > 0) {
+      const text = isTagalog
+        ? [
+            'PANGMATAGALANG HALAGA AT GASTUSIN NG VINFAST VF 5 PLUS',
+            '',
+            'Narito ang mga karagdagang detalye ukol sa pangmatagalang halaga at karanasan sa pagmamay-ari ng VF 5 Plus:',
+            '',
+            'PANG-ARAW-ARAW NA GASTUSIN AT MAINTENANCE',
+            '- Matipid sa Maintenance: Walang engine oil, oil filters, spark plugs, radiator coolant, at transmission fluid na papalitan taon-taon. Bawas ng mahigit 60% ang maintenance cost.',
+            '- Regenerative Braking: Ang electric motor braking ay nagpapahaba sa buhay ng brake pads at rotors nang hanggang dobleng tagal.',
+            '- Taunang Matitipid sa Krudo: Humigit-kumulang ₱80,000 hanggang ₱95,000 bawat taon ang matitipid kumpara sa isang tradisyonal na 1.5L gas crossover.',
+            '',
+            'SEGURIDAD AT ADVANCED SAFETY',
+            '- 6 na Airbags: Proteksyon para sa buong pamilya sa harap at tagiliran.',
+            '- EVIDA Coding Exemption: Malayang magmaneho sa EDSA, C5, at buong Metro Manila nang walang coding restrictions.',
+            '',
+            generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, lang)
+          ].join('\n')
+        : [
+            'LONG-TERM VALUE AND OWNERSHIP OF THE VINFAST VF 5 PLUS',
+            '',
+            'Here are the deeper financial and operational advantages of owning the VF 5 Plus in the Philippines:',
+            '',
+            'MAINTENANCE AND OPERATIONAL ECONOMY',
+            '- Reduced Maintenance: No engine oil, spark plugs, oil filters, transmission fluids, or radiator flushes. Typical maintenance costs are cut by over 60%.',
+            '- Regenerative Braking: Electric motor deceleration drastically extends the lifespan of brake pads and rotors.',
+            '- Annual Fuel Savings: Save approximately ₱80,000 to ₱95,000 per year compared to a traditional 1.5L gasoline crossover.',
+            '',
+            'FAMILY SAFETY AND ROAD PRIVILEGES',
+            '- 6 Airbags & Electronic Stability: Comprehensive protection for your entire family.',
+            '- EVIDA Coding Exemption: Fully exempt from MMDA coding under Republic Act 11697 across all Metro Manila cities.',
+            '',
+            generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, lang)
+          ].join('\n');
+
+      return {
+        text,
+        mediaUrls: [],
         quickActions: [
           { label: isTagalog ? 'Mag-book ng VF 5 Plus Test Drive' : 'Book VF 5 Plus Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
           { label: isTagalog ? 'Kwentahin ang VF 5 Plus Amortization' : 'Calculate VF 5 Plus Amortization', action: 'calculate_model', payload: 'vf-5-plus' },
@@ -962,101 +1802,198 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
       };
     }
 
-    if (q.includes('6') || q.includes('vf 6') || q.includes('vf6')) {
-      const media = MEDIA_MAP['vf 6'];
-      const urls = media.map(m => m.url);
-      const urlLines = urls.join('\n\n');
+    const text = isTagalog
+      ? [
+          'PANGKALAHATANG TINGIN SA VINFAST VF 5 PLUS',
+          '',
+          'Ang VF 5 Plus ay isang matalinong family crossover na nagbibigay ng pambihirang halaga, espasyo, at zero emisyon:',
+          '',
+          'MGA PANGUNAHING DETALYE',
+          'Model: VF 5 Plus',
+          'Kategorya: Compact Family Crossover',
+          'Outright SRP: ₱1,191,000',
+          'Battery Subscription SRP: ₱992,000',
+          'Range: 326 km NEDC',
+          'Kapasidad ng Baterya: 37.23 kWh',
+          'Electric Motor: 134 hp / 135 Nm torque',
+          'Kapasidad: 5 Pasahero',
+          'Garantiya sa Sasakyan: 7 Taon o 160,000 km',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST VF 5 PLUS OVERVIEW',
+          '',
+          'The VF 5 Plus is a smart family crossover delivering exceptional value, space, and zero emissions:',
+          '',
+          'KEY SPECIFICATIONS',
+          'Model: VF 5 Plus',
+          'Segment: Compact Family Crossover',
+          'Outright SRP: ₱1,191,000',
+          'Battery Subscription SRP: ₱992,000',
+          'Driving Range: 326 km NEDC',
+          'Battery Capacity: 37.23 kWh',
+          'Electric Motor: 134 hp / 135 Nm torque',
+          'Seating: 5 Passengers',
+          'Vehicle Warranty: 7 Years or 160,000 km',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 5 Plus', context, lang)
+        ].join('\n');
 
-      const text = isTagalog
-        ? [
-            'MGA KULAY NG VINFAST VF 6',
-            '',
-            'Ang Italian-styled VF 6 crossover ay may 5 eleganteng kulay:',
-            '',
-            '- Crimson Red',
-            '- Infinity Blanc',
-            '- Jet Black',
-            '- Urban Mint',
-            '- Zenith Grey',
-            '',
-            urlLines,
-            '',
-            'Ipagreserba ba kita ng test drive appointment para masubukan ang VF 6 Plus sa kalsada?'
-          ].join('\n')
-        : [
-            'VINFAST VF 6 COLORWAYS',
-            '',
-            'The Italian-styled VF 6 crossover is available in 5 sophisticated colors:',
-            '',
-            '- Crimson Red',
-            '- Infinity Blanc',
-            '- Jet Black',
-            '- Urban Mint',
-            '- Zenith Grey',
-            '',
-            urlLines,
-            '',
-            'Shall I reserve a test drive appointment for you to test the VF 6 Plus on the open road?'
-          ].join('\n');
+    return {
+      text,
+      mediaUrls: [
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf5%20brahimny%20white.png',
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf5%20vinfast%20blue.png',
+      ],
+      quickActions: [
+        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 5 Plus' : 'Calculate VF 5 Plus Monthly', action: 'calculate_model', payload: 'vf-5-plus' },
+        { label: isTagalog ? 'Mag-book ng VF 5 Plus Test Drive' : 'Book VF 5 Plus Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
+      ]
+    };
+  }
 
-      return {
-        text,
-        mediaUrls: urls,
-        quickActions: [
-          { label: isTagalog ? 'Mag-book ng VF 6 Test Drive' : 'Book VF 6 Test Drive', action: 'book_test_drive', payload: 'vf-6' },
-        ]
-      };
-    }
+  if (q.includes('vf 6') || q.includes('vf6')) {
+    const text = isTagalog
+      ? [
+          'PANGKALAHATANG TINGIN SA VINFAST VF 6',
+          '',
+          'Ang VF 6 ay idinisenyo ng Torino Design mula sa Italya, pinagsasama ang karangyaan at electric agility:',
+          '',
+          'MGA PANGUNAHING DETALYE',
+          'Model: VF 6',
+          'Kategorya: Subcompact Crossover',
+          'VF 6 Eco SRP: ₱1,499,000',
+          'VF 6 Plus SRP: ₱1,699,000',
+          'Range: 399 km WLTP',
+          'Kapasidad ng Baterya: 59.6 kWh',
+          'Electric Motor: 174 hp / 250 Nm (Eco) o 201 hp / 310 Nm (Plus)',
+          'Drivetrain: Front-Wheel Drive (FWD)',
+          'Infotainment: 12.9-inch HD Driver-Oriented Touchscreen',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 6', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST VF 6 OVERVIEW',
+          '',
+          'The VF 6 subcompact crossover combines Italian styling by Torino Design with spirited electric driving:',
+          '',
+          'KEY SPECIFICATIONS',
+          'Model: VF 6',
+          'Segment: Subcompact Crossover',
+          'VF 6 Eco SRP: ₱1,499,000',
+          'VF 6 Plus SRP: ₱1,699,000',
+          'Driving Range: 399 km WLTP',
+          'Battery Capacity: 59.6 kWh',
+          'Electric Motor: 174 hp / 250 Nm (Eco) or 201 hp / 310 Nm (Plus)',
+          'Drivetrain: Front-Wheel Drive (FWD)',
+          'Infotainment: 12.9-inch HD Driver-Oriented Touchscreen',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 6', context, lang)
+        ].join('\n');
 
-    if (q.includes('7') || q.includes('vf 7') || q.includes('vf7')) {
-      const media = MEDIA_MAP['vf 7'];
-      const urls = media.map(m => m.url);
-      const urlLines = urls.join('\n\n');
+    return {
+      text,
+      mediaUrls: [
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf6%20crimson%20red.png',
+      ],
+      quickActions: [
+        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 6' : 'Calculate VF 6 Monthly', action: 'calculate_model', payload: 'vf-6' },
+        { label: isTagalog ? 'Mag-book ng VF 6 Test Drive' : 'Book VF 6 Test Drive', action: 'book_test_drive', payload: 'vf-6' },
+      ]
+    };
+  }
 
-      const text = isTagalog
-        ? [
-            'MGA KULAY NG VINFAST VF 7',
-            '',
-            'Ang high-performance VF 7 midsize crossover ay may 7 kapansin-pansing kulay:',
-            '',
-            '- Jet Black',
-            '- Blue',
-            '- Green',
-            '- Grey',
-            '- Red',
-            '- Silver',
-            '- White',
-            '',
-            urlLines,
-            '',
-            'Nais mo bang maranasan ang 348 hp dual-motor VF 7 Plus sa isang eksklusibong test drive?'
-          ].join('\n')
-        : [
-            'VINFAST VF 7 COLORWAYS',
-            '',
-            'The high-performance VF 7 midsize crossover comes in 7 distinct aerodynamic colors:',
-            '',
-            '- Jet Black',
-            '- Blue',
-            '- Green',
-            '- Grey',
-            '- Red',
-            '- Silver',
-            '- White',
-            '',
-            urlLines,
-            '',
-            'Would you like to experience the 348 hp dual-motor VF 7 Plus during an exclusive test drive?'
-          ].join('\n');
+  if (q.includes('vf 7') || q.includes('vf7')) {
+    const text = isTagalog
+      ? [
+          'PANGKALAHATANG TINGIN SA VINFAST VF 7',
+          '',
+          'Ang VF 7 ay midsize crossover na may disenyong hango sa fighter-jet at bilis na tulad ng supercar:',
+          '',
+          'MGA PANGUNAHING DETALYE',
+          'Model: VF 7',
+          'Kategorya: Midsize Crossover',
+          'VF 7 Eco SRP: ₱1,760,000',
+          'VF 7 Plus SRP: ₱2,380,000',
+          'Range: 450 km WLTP',
+          'Electric Motor: 201 hp / 280 Nm (Eco) o 348 hp / 500 Nm (Plus AWD)',
+          'Akselerasyon: 0-100 km/h sa loob ng 5.8 segundo (Plus)',
+          'Garantiya sa Sasakyan: 10 Taon o 200,000 km',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 7', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST VF 7 OVERVIEW',
+          '',
+          'The VF 7 is our midsize crossover featuring fighter-jet inspired architecture and supercar-level acceleration:',
+          '',
+          'KEY SPECIFICATIONS',
+          'Model: VF 7',
+          'Segment: Midsize Crossover',
+          'VF 7 Eco SRP: ₱1,760,000',
+          'VF 7 Plus SRP: ₱2,380,000',
+          'Driving Range: 450 km WLTP',
+          'Electric Motor: 201 hp / 280 Nm (Eco) or 348 hp / 500 Nm (Plus AWD)',
+          'Acceleration: 0-100 km/h in 5.8 seconds (Plus)',
+          'Vehicle Warranty: 10 Years or 200,000 km',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 7', context, lang)
+        ].join('\n');
 
-      return {
-        text,
-        mediaUrls: urls,
-        quickActions: [
-          { label: isTagalog ? 'Mag-book ng VF 7 Test Drive' : 'Book VF 7 Test Drive', action: 'book_test_drive', payload: 'vf-7' },
-        ]
-      };
-    }
+    return {
+      text,
+      mediaUrls: [
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20black.png',
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20blue.png',
+      ],
+      quickActions: [
+        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 7' : 'Calculate VF 7 Monthly', action: 'calculate_model', payload: 'vf-7' },
+        { label: isTagalog ? 'Mag-book ng VF 7 Test Drive' : 'Book VF 7 Test Drive', action: 'book_test_drive', payload: 'vf-7' },
+      ]
+    };
+  }
+
+  if (q.includes('vf 9') || q.includes('vf9')) {
+    const text = isTagalog
+      ? [
+          'PANGKALAHATANG TINGIN SA VINFAST VF 9',
+          '',
+          'Ang VF 9 ay ang aming punong barko na full-size luxury 3-row electric SUV para sa mga VIP at pamilya:',
+          '',
+          'MGA PANGUNAHING DETALYE',
+          'Model: VF 9',
+          'Kategorya: Flagship Luxury SUV',
+          'Tinatayang SRP: ₱4,990,000 hanggang ₱5,390,000',
+          'Range: Mahigit 600+ km WLTP',
+          'Lakas ng Motor: 402 hp AWD Dual Motor',
+          'Kapasidad: 7 Marangyang Upuan na may massage and executive console',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 9', context, lang)
+        ].join('\n')
+      : [
+          'VINFAST VF 9 OVERVIEW',
+          '',
+          'The VF 9 is our full-size 3-row presidential luxury electric SUV engineered for VIPs and families:',
+          '',
+          'KEY SPECIFICATIONS',
+          'Model: VF 9',
+          'Segment: Flagship Luxury SUV',
+          'Estimated SRP: ₱4,990,000 to ₱5,390,000',
+          'Driving Range: 600+ km WLTP',
+          'Electric Motor: 402 hp AWD Dual Motor',
+          'Seating: 7 Luxurious Seats with massage functionality and executive center console',
+          '',
+          generateDynamicClosingQuestion('specs', 'VF 9', context, lang)
+        ].join('\n');
+
+    return {
+      text,
+      mediaUrls: [],
+      quickActions: [
+        { label: isTagalog ? 'Mag-book ng Konsultasyon sa VF 9' : 'Book VF 9 Consultation', action: 'book_test_drive', payload: 'vf-9' },
+      ]
+    };
   }
 
   // VF 8 inquiry: clarify it is not available in PH
@@ -1068,13 +2005,13 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Nais po naming ipabatid na ang VF 8 ay kasalukuyang hindi inaalok sa merkado ng Pilipinas.',
           '',
           'OPISYAL NA LINEUP SA PILIPINAS',
-          '- VF 3: Urban Mini Electric SUV simula P590,000 (Battery Subscription)',
-          '- VF 5 Plus: Compact Family Crossover simula P949,000 (Battery Subscription)',
-          '- VF 6: Subcompact Italian-Styled Crossover simula P1,499,000',
-          '- VF 7: Aero-Dynamic Midsize Crossover na may hanggang 348 hp AWD simula P1,760,000',
-          '- VF 9: Presidential 7-Seater Luxury Flagship SUV simula P4,990,000',
+          '- VF 3: Urban Mini Electric SUV simula ₱590,000 (Battery Subscription)',
+          '- VF 5 Plus: Compact Family Crossover simula ₱949,000 (Battery Subscription)',
+          '- VF 6: Subcompact Italian-Styled Crossover simula ₱1,499,000',
+          '- VF 7: Aero-Dynamic Midsize Crossover na may hanggang 348 hp AWD simula ₱1,760,000',
+          '- VF 9: Presidential 7-Seater Luxury Flagship SUV simula ₱4,990,000',
           '',
-          'Nais mo bang suriin ang midsize VF 7 o ang aming flagship 7-seater na VF 9?'
+          generateDynamicClosingQuestion('general', 'VF 7', context, lang)
         ].join('\n')
       : [
           'VINFAST PHILIPPINES LINEUP AVAILABILITY',
@@ -1082,13 +2019,13 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Please note that the VF 8 is currently not available in the Philippine market.',
           '',
           'OFFICIAL PHILIPPINE LINEUP',
-          '- VF 3: Urban Mini Electric SUV starting at P590,000 (Battery Subscription)',
-          '- VF 5 Plus: Compact Family Crossover starting at P949,000 (Battery Subscription)',
-          '- VF 6: Subcompact Italian-Styled Crossover starting at P1,499,000',
-          '- VF 7: Aero-Dynamic Midsize Performance Crossover starting at P1,760,000',
-          '- VF 9: Presidential 7-Seater Luxury Flagship SUV starting at P4,990,000',
+          '- VF 3: Urban Mini Electric SUV starting at ₱590,000 (Battery Subscription)',
+          '- VF 5 Plus: Compact Family Crossover starting at ₱949,000 (Battery Subscription)',
+          '- VF 6: Subcompact Italian-Styled Crossover starting at ₱1,499,000',
+          '- VF 7: Aero-Dynamic Midsize Performance Crossover starting at ₱1,760,000',
+          '- VF 9: Presidential 7-Seater Luxury Flagship SUV starting at ₱4,990,000',
           '',
-          'Would you like to explore the midsize VF 7 or our flagship VF 9 instead?'
+          generateDynamicClosingQuestion('general', 'VF 7', context, lang)
         ].join('\n');
 
     return {
@@ -1101,7 +2038,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
     };
   }
 
-  // Competitor comparison queries: Toyota, BYD, Nissan, Honda, Gas, ICE, Raize, Vios, Dolphin, Atto
+  // 9. Competitor comparison queries
   if (
     q.includes('toyota') ||
     q.includes('byd') ||
@@ -1124,22 +2061,18 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Kapag pinili mo ang VinFast kaysa sa mga tradisyonal na sasakyang de-gasolina o kalabang EV sa Pilipinas, makakamit mo ang mga sumusunod na bentahe:',
           '',
           'BENTAHE SA PINANSYAL',
-          '- Battery Subscription Model: Pinapababa nang husto ng VinFast ang paunang presyo ng sasakyan sa pamamagitan ng hiwalay na battery subscription plan. Halimbawa, ang VF 5 Plus ay mabibili simula P949,000 lamang, at ang VF 3 simula P590,000 lamang.',
-          '- Zero Gasolina Expenses: Wala nang P70 kada litro na gastusin sa gasolina. Ang pag-charge ng EV sa Pilipinas ay humigit-kumulang 70% mas mura kada kilometro kaysa sa internal combustion engine.',
+          '- Battery Subscription Model: Pinapababa nang husto ng VinFast ang paunang presyo ng sasakyan. Ang VF 3 ay simula ₱590,000 at ang VF 5 Plus ay simula ₱949,000.',
+          '- Zero Gasolina Expenses: Wala nang ₱70 kada litro na gastusin sa gasolina. Humigit-kumulang 70% mas mura ang pag-charge kaysa sa gasolina.',
           '',
           'MABABANG MAINTENANCE AT MATIBAY NA KALIDAD',
-          '- Walang Engine Maintenance: Dahil electric motor ang gamit, wala nang kailangang langis ng makina, spark plugs, oil filters, transmission fluids, at radiator flushes. Nababawasan ng mahigit 60% ang taunang gastos sa maintenance.',
-          '- Regenerative Braking: Ang preno ay gumagamit ng motor deceleration, kaya hindi madaling mapudpod ang brake pads at rotors.',
+          '- Walang Engine Maintenance: Wala nang langis ng makina, spark plugs, oil filters, at radiator flushes. Nababawasan ng mahigit 60% ang taunang gastos.',
+          '- Regenerative Braking: Hindi madaling mapudpod ang brake pads at rotors.',
           '',
           'KAPANATAGAN SA PAGMAMAY-ARI',
-          '- Nangungunang Warranty sa Industriya: Nag-aalok ang VinFast ng hanggang 10 Taon o 200,000 km na vehicle warranty, higit na mas mahaba kaysa sa karaniwang 3 o 5 taon ng ibang brand.',
-          '- Garantiyang Libreng Palit ng Baterya: Sa ilalim ng battery subscription program, libreng papalitan ng VinFast ang baterya kung bumaba sa 70% ang kapasidad nito.',
+          '- Nangungunang Warranty: Hanggang 10 Taon o 200,000 km na vehicle warranty.',
+          '- Libreng Palit ng Baterya: Sa ilalim ng battery subscription, libreng papalitan ang baterya kung bumaba sa 70% ang kapasidad.',
           '',
-          'SUPERIOR NA STANDARD SPECIFICATIONS',
-          '- Mataas na Electric Torque: May instant 135 Nm torque sa VF 5 Plus at hanggang 500 Nm sa VF 7 Plus para sa agarang arangkada na walang lag.',
-          '- Kumpletong ADAS Safety: Standard na ang smart cruise control, lane assist, at multiple airbags sa ating mga modelo.',
-          '',
-          'Nais mo bang ipaghanda kita ng custom bank financing quotation batay sa 20% down payment?'
+          generateDynamicClosingQuestion('comparison', activeModel, context, lang)
         ].join('\n')
       : [
           'WHY VINFAST OUTPERFORMS TRADITIONAL GAS AND RIVAL EVS',
@@ -1147,36 +2080,75 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'When you choose VinFast over traditional gasoline cars or competing EV brands in the Philippines, you unlock distinct financial and engineering advantages:',
           '',
           'FINANCIAL ADVANTAGE',
-          '- Battery Subscription Model: VinFast drastically lowers your initial cash outlay by offering a dedicated battery subscription plan. For example, the VF 5 Plus is available starting at only P949,000, and the VF 3 starts at only P590,000.',
-          '- Zero Fuel Expenses: Say goodbye to P70 per liter gasoline prices. Charging an EV in the Philippines costs approximately 70% less per kilometer than fueling an internal combustion engine.',
+          '- Battery Subscription Model: Drastically lowers initial cash outlay. The VF 3 starts at only ₱590,000, and the VF 5 Plus starts at ₱949,000.',
+          '- Zero Fuel Expenses: Save up to 70% on operating costs compared to ₱70/liter gasoline prices.',
           '',
           'LOW MAINTENANCE AND RELIABILITY',
-          '- No Engine Maintenance: Electric drivetrains eliminate motor oil, spark plugs, oil filters, transmission fluids, and radiator flushes. Typical annual maintenance costs are reduced by more than 60%.',
-          '- Regenerative Braking: Electric motor deceleration reduces wear on brake pads and rotors, keeping replacement costs minimal.',
+          '- No Engine Maintenance: No motor oil, spark plugs, oil filters, or radiator flushes. Annual maintenance costs are cut by over 60%.',
+          '- Regenerative Braking: Electric motor deceleration drastically reduces wear on brake pads.',
           '',
           'TOTAL OWNERSHIP CONFIDENCE',
-          '- Industry-Leading Warranty: VinFast provides up to 10 Years or 200,000 km vehicle warranty, far surpassing the standard 3-year or 5-year warranties offered by competitors.',
-          '- Guaranteed Battery Health: Under the battery subscription program, VinFast guarantees free battery replacement if capacity ever drops below 70%, giving you absolute peace of mind for the lifetime of the vehicle.',
+          '- Industry-Leading Warranty: Up to 10 Years or 200,000 km vehicle warranty coverage.',
+          '- Lifetime Battery Health Guarantee: Free replacement if battery capacity drops below 70% under battery subscription.',
           '',
-          'SUPERIOR STANDARD SPECIFICATIONS',
-          '- High Electric Torque: With 135 Nm instantly on the VF 5 Plus and up to 500 Nm on the VF 7 Plus, you enjoy instant acceleration with zero lag.',
-          '- Complete ADAS Safety: Driver assistance systems, smart cruise control, and multi-airbag safety come standard.',
-          '',
-          'Shall I prepare a custom bank financing quotation for you based on a 20% down payment?'
+          generateDynamicClosingQuestion('comparison', activeModel, context, lang)
         ].join('\n');
 
     return {
       text,
       mediaUrls: [],
       quickActions: [
-        { label: isTagalog ? 'Ihambing sa Calculator' : 'Compare on Calculator', action: 'calculate_model', payload: 'vf-5-plus' },
-        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
+        { label: isTagalog ? 'Ihambing sa Calculator' : 'Compare on Calculator', action: 'calculate_model', payload: activeModelId },
+        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: activeModelId },
       ]
     };
   }
 
-  // Battery subscription specific queries
+  // 10. Battery subscription specific queries
   if (q.includes('battery subscription') || q.includes('subscription') || q.includes('battery lease') || q.includes('rental') || q.includes('baterya')) {
+    if (context.repeatTopicCount > 0) {
+      const text = isTagalog
+        ? [
+            'MGA DETALYE NG VINFAST BATTERY SUBSCRIPTION PLANS',
+            '',
+            'Narito ang mga detalye upang mapili mo ang pinakamagandang subscription tier para sa iyong biyahe:',
+            '',
+            'MGA PLANO AT TIERS',
+            '- Regular Commuter Tier: Para sa mga nagbibiyahe nang mas mababa sa 1,200 km bawat buwan, abot-kaya ang buwanang bayad.',
+            '- Unlimited Mileage Tier: Para sa mga daily expressway commuters o TNVS drivers na walang limitasyon sa distansya.',
+            '',
+            'HABANG-BUHAY NA PROTEKSYON AT RESALE',
+            '- 70% Health Guarantee: Kung bumaba sa 70% ang battery capacity, papalitan ito ng bago ng VinFast nang libre.',
+            '- Walang Pagbaba ng Halaga (No Depreciation): Kapag ibinenta mo ang sasakyan, ililipat lang ang subscription sa bibili.',
+            '',
+            generateDynamicClosingQuestion('subscription', activeModel, context, lang)
+          ].join('\n')
+        : [
+            'VINFAST BATTERY SUBSCRIPTION TIERS AND VALUE',
+            '',
+            'Here are the specifics to help you choose the best subscription tier for your driving profile:',
+            '',
+            'SUBSCRIPTION TIERS',
+            '- Commuter Tier: Ideal for drivers covering under 1,200 km per month, keeping fixed costs minimal.',
+            '- Unlimited Mileage Tier: Perfect for daily long-distance commuters and active families with zero distance limits.',
+            '',
+            'LIFETIME PROTECTION AND RESALE ADVANTAGE',
+            '- 70% Health Guarantee: Free battery replacement if capacity ever dips below 70%.',
+            '- High Resale Value: The subscription simply transfers to the next owner, eliminating all battery aging concerns.',
+            '',
+            generateDynamicClosingQuestion('subscription', activeModel, context, lang)
+          ].join('\n');
+
+      return {
+        text,
+        mediaUrls: [],
+        quickActions: [
+          { label: isTagalog ? 'Kwentahin ang Subscription' : 'Calculate Subscription', action: 'calculate_model', payload: activeModelId },
+          { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive', payload: activeModelId },
+        ]
+      };
+    }
+
     const text = isTagalog
       ? [
           'PROGRAMA NG VINFAST BATTERY SUBSCRIPTION',
@@ -1184,18 +2156,16 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Ang VinFast Battery Subscription ay isang makabagong solusyon sa pagmamay-ari na ginawa para sa mga motorista sa Pilipinas:',
           '',
           'PAANO ITO GUMAGANA',
-          '- Mas Mababang SRP: Binibili mo ang sasakyan nang hindi binabayaran nang buo ang presyo ng battery pack. Dahil dito, ang presyo ng VF 3 ay bumababa sa P590,000 at ang VF 5 Plus sa P949,000.',
+          '- Mas Mababang SRP: Binibili mo ang sasakyan nang hindi binabayaran nang buo ang presyo ng battery pack. Dahil dito, ang presyo ng VF 3 ay bumababa sa ₱590,000 at ang VF 5 Plus sa ₱949,000.',
           '- Buwanang Subscription Fee: Magbabayad ka ng abot-kayang buwanang halaga na sumasakop sa paggamit at buong serbisyo ng baterya.',
           '- Habang-buhay na Proteksyon: Libreng pinapalitan ng VinFast ang baterya kung bumaba ang kapasidad nito sa 70% state of health.',
-          '- Walang Pag-aalala sa Resale Value: Kapag ibebenta mo ang sasakyan sa hinaharap, ililipat lamang ang subscription sa bagong may-ari, kaya walang pangamba sa battery degradation.',
+          '- Walang Pag-aalala sa Resale Value: Kapag ibebenta mo ang sasakyan sa hinaharap, ililipat lamang ang subscription sa bagong may-ari.',
           '',
           'PAGHAHAMBING NG PRESYO',
-          '- VF 3 Diretso / Outright: P745,000',
-          '- VF 3 may Battery Subscription: P590,000',
-          '- VF 5 Plus Diretso / Outright: P1,099,000',
-          '- VF 5 Plus may Battery Subscription: P949,000',
+          '- VF 3 Diretso / Outright: ₱745,000 | May Battery Subscription: ₱590,000',
+          '- VF 5 Plus Diretso / Outright: ₱1,191,000 | May Battery Subscription: ₱992,000',
           '',
-          'Nais mo bang kwentahin natin ang iyong buwanang hulog sa ilalim ng Battery Subscription plan ngayon?'
+          generateDynamicClosingQuestion('subscription', activeModel, context, lang)
         ].join('\n')
       : [
           'VINFAST BATTERY SUBSCRIPTION PROGRAM',
@@ -1203,31 +2173,29 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'The VinFast Battery Subscription model is an innovative ownership solution tailored for Filipino motorists:',
           '',
           'HOW IT WORKS',
-          '- Substantially Lower SRP: You purchase the vehicle without paying upfront for the battery pack. This brings the entry price of the VF 3 down to P590,000 and the VF 5 Plus to P949,000.',
+          '- Substantially Lower SRP: You purchase the vehicle without paying upfront for the battery pack. This brings the entry price of the VF 3 down to ₱590,000 and the VF 5 Plus to ₱992,000.',
           '- Monthly Subscription Fee: You pay a predictable monthly fee that covers the battery use and full maintenance.',
           '- Lifetime Battery Protection: VinFast replaces the battery completely free of charge if its capacity ever dips below 70% state of health.',
-          '- No Battery Degradation Worry: When you sell the vehicle later, the new owner assumes the subscription, ensuring high resale value without battery degradation concerns.',
+          '- High Resale Value: When you sell the vehicle later, the new owner assumes the subscription, ensuring high resale value without battery degradation concerns.',
           '',
           'PRICING COMPARISON',
-          '- VF 3 Outright Purchase: P745,000',
-          '- VF 3 with Battery Subscription: P590,000',
-          '- VF 5 Plus Outright Purchase: P1,099,000',
-          '- VF 5 Plus with Battery Subscription: P949,000',
+          '- VF 3 Outright: ₱745,000 | With Battery Subscription: ₱590,000',
+          '- VF 5 Plus Outright: ₱1,191,000 | With Battery Subscription: ₱992,000',
           '',
-          'Would you like to calculate your monthly amortization under the Battery Subscription plan today?'
+          generateDynamicClosingQuestion('subscription', activeModel, context, lang)
         ].join('\n');
 
     return {
       text,
       mediaUrls: [],
       quickActions: [
-        { label: isTagalog ? 'Kwentahin ang Subscription' : 'Calculate Subscription Amortization', action: 'calculate_model', payload: 'vf-5-plus' },
-        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
+        { label: isTagalog ? 'Kwentahin ang Subscription' : 'Calculate Subscription Amortization', action: 'calculate_model', payload: activeModelId },
+        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive', payload: activeModelId },
       ]
     };
   }
 
-  // Dealership or location queries: dealer, showroom, branch, location, where, address, contact, hotline
+  // 11. Dealership or location queries
   const dealerMatch = findNearestDealer(q);
   const isDealerQuery = q.includes('dealer') || q.includes('showroom') || q.includes('branch') || q.includes('saan') || q.includes('where') || q.includes('location') || q.includes('visit') || q.includes('address') || q.includes('hotline') || q.includes('phone') || dealerMatch !== undefined;
 
@@ -1248,7 +2216,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
             '',
             'Ang aming showroom ay kumpleto sa mga demo units, DC fast-chargers, at sertipikadong VinFast product specialists na handang tumulong sa iyo.',
             '',
-            `Nais mo bang ipag-schedule kita ng test drive sa ${dealerMatch.name} ngayong linggo upang masubukan mo ang sasakyan?`
+            generateDynamicClosingQuestion('dealers', activeModel, context, lang, dealerMatch.name)
           ].join('\n')
         : [
             'OFFICIAL VINFAST PHILIPPINES DEALER NETWORK',
@@ -1264,7 +2232,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
             '',
             'Our showroom is equipped with demo vehicles, DC fast-chargers, and certified VinFast product specialists ready to welcome you.',
             '',
-            `Would you like me to schedule a test drive for you at ${dealerMatch.name} this week so you can experience the vehicle firsthand?`
+            generateDynamicClosingQuestion('dealers', activeModel, context, lang, dealerMatch.name)
           ].join('\n');
 
       return {
@@ -1303,7 +2271,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           '- Visayas: Cebu Central, Cebu North Mandaue, Cebu South SRP, Dumaguete',
           '- Mindanao: Davao City Buhangin, Tagum City, General Santos City',
           '',
-          'Saang lungsod o probinsya ka matatagpuan upang maiugnay kita sa pinakamalapit na dealership?'
+          generateDynamicClosingQuestion('dealers', activeModel, context, lang)
         ].join('\n')
       : [
           'OFFICIAL VINFAST PHILIPPINES DEALER NETWORK',
@@ -1328,7 +2296,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           '- Visayas: Cebu Central, Cebu North Mandaue, Cebu South SRP, Dumaguete',
           '- Mindanao: Davao City Buhangin, Tagum City, General Santos City',
           '',
-          'Which city or province are you located in so I can connect you with your closest dealer?'
+          generateDynamicClosingQuestion('dealers', activeModel, context, lang)
         ].join('\n');
 
     return {
@@ -1341,377 +2309,55 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
     };
   }
 
-  // Model-specific inquiries: VF 3, VF 5, VF 6, VF 7, VF 9
-  if (q.includes('vf 3') || q.includes('vf3')) {
-    const text = isTagalog
-      ? [
-          'PANGKALAHATANG TINGIN SA VINFAST VF 3',
-          '',
-          'Ang VF 3 ay isang modernong mini electric SUV na binuo upang baguhin ang iyong pang-araw-araw na biyahe sa lungsod:',
-          '',
-          'MGA PANGUNAHING DETALYE',
-          'Model: VF 3',
-          'Kategorya: Mini Electric SUV',
-          'Outright SRP: P745,000',
-          'Battery Subscription SRP: P590,000',
-          'Range: 210 km NEDC',
-          'Kapasidad ng Baterya: 18.64 kWh',
-          'Electric Motor: 43 hp / 110 Nm torque',
-          'Ground Clearance: 191 mm',
-          'Kapasidad: 4 na Pasahero',
-          'Infotainment: 10-inch Touchscreen',
-          '',
-          'MGA BENTAHE',
-          '- Ang mataas na 191 mm ground clearance ay kayang-kaya ang baha at lubak sa kalsada.',
-          '- Maliit ang turning radius kaya napakadaling iparada sa masisikip na mall at eskinita.',
-          '- Mabilis na DC charging mula 10% hanggang 70% sa loob lamang ng 36 minuto.',
-          '',
-          'Aling kulay ang nais mong ipareserba para sa iyong VF 3 ngayon?'
-        ].join('\n')
-      : [
-          'VINFAST VF 3 OVERVIEW',
-          '',
-          'The VF 3 is an urban mini electric SUV engineered to transform your daily city drive:',
-          '',
-          'KEY SPECIFICATIONS',
-          'Model: VF 3',
-          'Segment: Mini Electric SUV',
-          'Outright SRP: P745,000',
-          'Battery Subscription SRP: P590,000',
-          'Driving Range: 210 km NEDC',
-          'Battery Capacity: 18.64 kWh',
-          'Electric Motor: 43 hp / 110 Nm torque',
-          'Ground Clearance: 191 mm',
-          'Seating: 4 Passengers',
-          'Infotainment: 10-inch Screen',
-          '',
-          'KEY ADVANTAGES',
-          '- High 191 mm ground clearance easily navigates uneven roads and rainy season floods.',
-          '- Compact exterior with nimble turning radius makes parking in crowded malls and tight streets effortless.',
-          '- Fast DC charging takes you from 10% to 70% in only 36 minutes.',
-          '',
-          'Which color variant would you like to reserve for your VF 3 today?'
-        ].join('\n');
-
-    return {
-      text,
-      mediaUrls: [
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf3%20blue.png',
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf3%20yellow.png',
-      ],
-      quickActions: [
-        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 3' : 'Calculate VF 3 Monthly', action: 'calculate_model', payload: 'vf-3' },
-        { label: isTagalog ? 'Mag-book ng VF 3 Test Drive' : 'Book VF 3 Test Drive', action: 'book_test_drive', payload: 'vf-3' },
-      ]
-    };
-  }
-
-  if (q.includes('vf 5') || q.includes('vf5')) {
-    const text = isTagalog
-      ? [
-          'PANGKALAHATANG TINGIN SA VINFAST VF 5 PLUS',
-          '',
-          'Ang VF 5 Plus ang pinakasikat na 5-seater compact crossover para sa mga pamilya at commuters sa Pilipinas:',
-          '',
-          'MGA PANGUNAHING DETALYE',
-          'Model: VF 5 Plus',
-          'Kategorya: Compact Crossover',
-          'Outright SRP: P1,099,000',
-          'Battery Subscription SRP: P949,000',
-          'Range: 326 km NEDC',
-          'Kapasidad ng Baterya: 37.23 kWh',
-          'Electric Motor: 134 hp / 135 Nm torque',
-          'Kapasidad: 5 Pasahero',
-          'Infotainment: 8-inch Touchscreen na may 7-inch Driver Display',
-          'Garantiya sa Sasakyan: 7 Taon o 160,000 km',
-          '',
-          'MGA BENEPISYO SA PAGMAMAY-ARI',
-          '- Sa 326 km range, 2 hanggang 3 beses lamang kailangang mag-charge kada buwan para sa karaniwang biyahe.',
-          '- Ang 135 Nm electric torque ay mas mabilis humarurot kaysa sa mga karaniwang 1.5-liter gasoline cars.',
-          '- Kumpletong active at passive safety features kabilang ang 6 airbags, blind-spot detection, at rear cross-traffic alert.',
-          '',
-          'Nais mo bang ipag-schedule kita ng test drive para sa VF 5 Plus sa VinFast BGC o sa iyong pinakamalapit na showroom ngayong linggo?'
-        ].join('\n')
-      : [
-          'VINFAST VF 5 PLUS OVERVIEW',
-          '',
-          'The VF 5 Plus is the most popular compact crossover for Filipino families and daily commuters:',
-          '',
-          'KEY SPECIFICATIONS',
-          'Model: VF 5 Plus',
-          'Segment: Compact Crossover',
-          'Outright SRP: P1,099,000',
-          'Battery Subscription SRP: P949,000',
-          'Driving Range: 326 km NEDC',
-          'Battery Capacity: 37.23 kWh',
-          'Electric Motor: 134 hp / 135 Nm torque',
-          'Seating: 5 Passengers',
-          'Infotainment: 8-inch Touchscreen with 7-inch Driver Cluster',
-          'Vehicle Warranty: 7 Years or 160,000 km',
-          '',
-          'OWNERSHIP BENEFITS',
-          '- Outstanding 326 km range allows most metro commuters to charge just two to three times per month.',
-          '- Instant 135 Nm torque delivers faster acceleration than traditional 1.5-liter gasoline compact cars.',
-          '- Complete active and passive safety suite including 6 airbags, rear cross-traffic alert, and blind-spot detection.',
-          '',
-          'Would you like me to schedule a test drive for you at VinFast BGC or your nearest showroom this week?'
-        ].join('\n');
-
-    return {
-      text,
-      mediaUrls: [
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf5%20vinfast%20blue.png',
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf5%20brahimny%20white.png',
-      ],
-      quickActions: [
-        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 5 Plus' : 'Calculate VF 5 Plus Monthly', action: 'calculate_model', payload: 'vf-5-plus' },
-        { label: isTagalog ? 'Mag-book ng VF 5 Plus Test Drive' : 'Book VF 5 Plus Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
-      ]
-    };
-  }
-
-  if (q.includes('vf 6') || q.includes('vf6')) {
-    const text = isTagalog
-      ? [
-          'PANGKALAHATANG TINGIN SA VINFAST VF 6',
-          '',
-          'Pinagsasama ng VF 6 ang disenyong Italyano mula sa Torino Design at masiglang electric driving:',
-          '',
-          'MGA PANGUNAHING DETALYE',
-          'Model: VF 6',
-          'Kategorya: Subcompact Crossover',
-          'VF 6 Eco SRP: P1,499,000',
-          'VF 6 Plus SRP: P1,699,000',
-          'Range: 399 km WLTP',
-          'Kapasidad ng Baterya: 59.6 kWh',
-          'Electric Motor: 174 hp / 250 Nm (Eco) o 201 hp / 310 Nm (Plus)',
-          'Drivetrain: Front-Wheel Drive (FWD)',
-          'Kapasidad: 5 Pasahero',
-          'Infotainment: 12.9-inch HD Driver-Oriented Touchscreen',
-          '',
-          'MGA BENTAHE',
-          '- Makinis na disenyong Europeo na may signature full-width LED light bar sa harap at likod.',
-          '- Marangyang interior na may vegan leather at driver cockpit.',
-          '- Level 2 Highway Assist ADAS suite para sa relax na biyahe sa expressway.',
-          '',
-          'Nais mo bang mag-iskedyul ng personal na pagtingin sa VF 6 sa isang awtorisadong VinFast showroom?'
-        ].join('\n')
-      : [
-          'VINFAST VF 6 OVERVIEW',
-          '',
-          'The VF 6 subcompact crossover combines Italian styling by Torino Design with spirited electric driving:',
-          '',
-          'KEY SPECIFICATIONS',
-          'Model: VF 6',
-          'Segment: Subcompact Crossover',
-          'VF 6 Eco SRP: P1,499,000',
-          'VF 6 Plus SRP: P1,699,000',
-          'Driving Range: 399 km WLTP',
-          'Battery Capacity: 59.6 kWh',
-          'Electric Motor: 174 hp / 250 Nm (Eco) or 201 hp / 310 Nm (Plus)',
-          'Drivetrain: Front-Wheel Drive (FWD)',
-          'Seating: 5 Passengers',
-          'Infotainment: 12.9-inch HD Driver-Oriented Touchscreen',
-          '',
-          'KEY ADVANTAGES',
-          '- Sculpted European styling with full-width signature LED light bar front and rear.',
-          '- Luxurious vegan leather interior with panoramic driver cockpit.',
-          '- Level 2 Highway Assist ADAS suite for effortless expressway cruising.',
-          '',
-          'Would you like to schedule a personal viewing of the VF 6 at an authorized VinFast showroom?'
-        ].join('\n');
-
-    return {
-      text,
-      mediaUrls: [
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf6%20crimson%20red.png',
-      ],
-      quickActions: [
-        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 6' : 'Calculate VF 6 Monthly', action: 'calculate_model', payload: 'vf-6' },
-        { label: isTagalog ? 'Mag-book ng VF 6 Test Drive' : 'Book VF 6 Test Drive', action: 'book_test_drive', payload: 'vf-6' },
-      ]
-    };
-  }
-
-  if (q.includes('vf 7') || q.includes('vf7')) {
-    const text = isTagalog
-      ? [
-          'PANGKALAHATANG TINGIN SA VINFAST VF 7',
-          '',
-          'Ang VF 7 ay midsize crossover na may disenyong hango sa fighter-jet at pambihirang bilis na tulad ng supercar:',
-          '',
-          'MGA PANGUNAHING DETALYE',
-          'Model: VF 7',
-          'Kategorya: Midsize Crossover',
-          'VF 7 Eco SRP: P1,760,000',
-          'VF 7 Plus SRP: P2,380,000',
-          'Range: 450 km WLTP',
-          'Kapasidad ng Baterya: 75.3 kWh',
-          'Electric Motor: 201 hp / 280 Nm (Eco) o 348 hp / 500 Nm (Plus AWD)',
-          'Drivetrain: Dual-Motor All-Wheel Drive (AWD sa Plus)',
-          'Akselerasyon: 0-100 km/h sa loob ng 5.8 segundo (Plus)',
-          'Garantiya sa Sasakyan: 10 Taon o 200,000 km',
-          '',
-          'MGA BENTAHE',
-          '- 348 hp at 500 Nm dual-motor AWD na nagbibigay ng pambihirang lakas at bilis.',
-          '- Makabagong aerodynamic silhouette na may flush door handles at panoramic glass roof.',
-          '- 10 taong vehicle warranty na may 24/7 roadside assistance sa buong Pilipinas.',
-          '',
-          'Ipagreserba ba kita ng test drive appointment upang maranasan mo ang 348 hp VF 7 Plus nang personal?'
-        ].join('\n')
-      : [
-          'VINFAST VF 7 OVERVIEW',
-          '',
-          'The VF 7 is our midsize crossover featuring fighter-jet inspired architecture and supercar-level acceleration:',
-          '',
-          'KEY SPECIFICATIONS',
-          'Model: VF 7',
-          'Segment: Midsize Crossover',
-          'VF 7 Eco SRP: P1,760,000',
-          'VF 7 Plus SRP: P2,380,000',
-          'Driving Range: 450 km WLTP',
-          'Battery Capacity: 75.3 kWh',
-          'Electric Motor: 201 hp / 280 Nm (Eco) or 348 hp / 500 Nm (Plus AWD)',
-          'Drivetrain: Dual-Motor All-Wheel Drive (AWD on Plus)',
-          'Acceleration: 0-100 km/h in 5.8 seconds (Plus)',
-          'Vehicle Warranty: 10 Years or 200,000 km',
-          '',
-          'KEY ADVANTAGES',
-          '- 348 hp and 500 Nm dual-motor AWD delivers exhilarating supercar-grade acceleration.',
-          '- Striking aerodynamic silhouette with flush door handles and panoramic glass roof.',
-          '- Comprehensive 10-year warranty with 24/7 roadside assistance across the Philippines.',
-          '',
-          'Shall I reserve a test drive appointment for you to experience the 348 hp VF 7 Plus firsthand?'
-        ].join('\n');
-
-    return {
-      text,
-      mediaUrls: [
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20black.png',
-        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20blue.png',
-      ],
-      quickActions: [
-        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 7' : 'Calculate VF 7 Monthly', action: 'calculate_model', payload: 'vf-7' },
-        { label: isTagalog ? 'Mag-book ng VF 7 Test Drive' : 'Book VF 7 Test Drive', action: 'book_test_drive', payload: 'vf-7' },
-      ]
-    };
-  }
-
-  if (q.includes('vf 9') || q.includes('vf9')) {
-    const text = isTagalog
-      ? [
-          'PANGKALAHATANG TINGIN SA VINFAST VF 9',
-          '',
-          'Ang VF 9 ay ang aming punong barko na full-size luxury 3-row electric SUV para sa mga VIP at pamilya:',
-          '',
-          'MGA PANGUNAHING DETALYE',
-          'Model: VF 9',
-          'Kategorya: Flagship Luxury SUV',
-          'Tinatayang SRP: P4,990,000 hanggang P5,390,000',
-          'Range: Mahigit 600+ km WLTP',
-          'Kapasidad ng Baterya: 123 kWh',
-          'Electric Motor: 402 hp / 620 Nm torque',
-          'Drivetrain: Dual-Motor All-Wheel Drive (AWD)',
-          'Kapasidad: 6 o 7 Pasahero (may Captain Chairs)',
-          'Infotainment: 15.6-inch Front Display at Rear Passenger Screen',
-          'Garantiya sa Sasakyan: 10 Taon o 200,000 km',
-          '',
-          'MGA BENTAHE',
-          '- Malaking 123 kWh baterya na nagbibigay ng higit 600 km na driving range sa isang charge lamang.',
-          '- Executive captain chairs sa pangalawang hanay na may heating, ventilation, at massage functions.',
-          '- Tri-zone climate control na may hospital-grade HEPA air filtration at panoramic glass roof.',
-          '',
-          'Nais mo bang ayusin ko ang isang pribadong VIP consultation at test drive para sa VF 9 kasama ang aming Senior Sales Executive?'
-        ].join('\n')
-      : [
-          'VINFAST VF 9 OVERVIEW',
-          '',
-          'The VF 9 is our flagship full-size luxury 3-row electric SUV for discerning VIPs and families:',
-          '',
-          'KEY SPECIFICATIONS',
-          'Model: VF 9',
-          'Segment: Flagship Luxury SUV',
-          'Indicative SRP: P4,990,000 to P5,390,000',
-          'Driving Range: Up to 600+ km WLTP',
-          'Battery Capacity: 123 kWh',
-          'Electric Motor: 402 hp / 620 Nm torque',
-          'Drivetrain: Dual-Motor All-Wheel Drive (AWD)',
-          'Seating: 6 or 7 Passengers (with Captain Chairs)',
-          'Infotainment: 15.6-inch Front Display and Dedicated Rear Passenger Screen',
-          'Vehicle Warranty: 10 Years or 200,000 km',
-          '',
-          'KEY ADVANTAGES',
-          '- Massive 123 kWh battery delivers over 600 km of driving range on a single charge.',
-          '- Executive second-row captain chairs with heating, ventilation, and massage functions.',
-          '- Tri-zone climate control with medical-grade HEPA filtration and panoramic glass roof.',
-          '',
-          'Shall I arrange a private VIP consultation and test drive for the VF 9 with our Senior Sales Executive?'
-        ].join('\n');
-
-    return {
-      text,
-      mediaUrls: [],
-      quickActions: [
-        { label: isTagalog ? 'Kwentahin ang Buwanang Hulog ng VF 9' : 'Calculate VF 9 Monthly', action: 'calculate_model', payload: 'vf-9' },
-        { label: isTagalog ? 'Mag-book ng VF 9 Test Drive' : 'Book VF 9 Test Drive', action: 'book_test_drive', payload: 'vf-9' },
-      ]
-    };
-  }
-
-  // Range and charging anxiety inquiries: charging, station, range, battery life, km, travel
-  if (q.includes('charge') || q.includes('charging') || q.includes('range') || q.includes('how far') || q.includes('km') || q.includes('battery life') || q.includes('karga')) {
-    const text = isTagalog
-      ? [
-          'KAPANATAGAN SA PAG-CHARGE AT REAL-WORLD RANGE',
-          '',
-          'Ang pag-charge ng VinFast EV sa Pilipinas ay napakasimple, matipid, at maginhawa:',
-          '',
-          'PAG-CHARGE SA BAHAY',
-          '- 7 kW Home Wallbox: Isinasaksak sa kuryente sa bahay at pinupuno ang sasakyan habang ikaw ay natutulog sa gabi.',
-          '- Standard 220V Portable Charger: Kasama sa bawat sasakyan, kaya puwedeng magsaksak sa anumang grounded 220V outlet sa Pilipinas.',
-          '',
-          'PUBLIC FAST CHARGING',
-          '- DC Fast Charging: Mula 10% hanggang 70% sa loob lamang ng 30 hanggang 36 na minuto.',
-          '- Pambansang Charging Network: Matatagpuan sa mga awtorisadong VinFast dealership, mga pangunahing mall, at mga gasolinahan sa expressway.',
-          '',
-          'TUNAY NA DATOS SA PANG-ARAW-ARAW NA BIYAHE',
-          '- Sa 326 km range ng VF 5 Plus at 45 km karaniwang biyahe kada araw, kailangan mo lamang mag-charge minsan kada 6 na araw.',
-          '- Ito ay 4 hanggang 5 beses lamang kada buwan, na nag-aalis sa pagpila sa mga gasolinahan.',
-          '',
-          'Nais mo bang kwentahin natin ang iyong eksaktong dalas ng pag-charge at matitipid sa krudo gamit ang aming kalkulador?'
-        ].join('\n')
-      : [
-          'CHARGING AND REAL-WORLD RANGE CONFIDENCE',
-          '',
-          'Charging a VinFast EV in the Philippines is simple, cost-effective, and convenient:',
-          '',
-          'HOME CHARGING',
-          '- 7 kW Home Wallbox: Plugs into your home power supply and recharges your vehicle overnight while you sleep.',
-          '- Standard 220V Portable Charger: Included with your vehicle, allowing you to charge from any grounded Philippine outlet.',
-          '',
-          'PUBLIC FAST CHARGING',
-          '- DC Fast Charging: VinFast fast chargers charge the battery from 10% to 70% in only 30 to 36 minutes.',
-          '- Nationwide Charging Network: Conveniently located at authorized VinFast dealerships, major shopping malls, and expressway tollway hubs.',
-          '',
-          'REAL-WORLD COMMUTE CALCULATIONS',
-          '- With a 326 km range on the VF 5 Plus and a typical 45 km daily commute, you only need to charge once every 6 days.',
-          '- That is only 4 to 5 charging sessions per month, saving you hours otherwise spent in gas station queues.',
-          '',
-          'Would you like me to estimate your exact monthly charging frequency and fuel savings using our calculator?'
-        ].join('\n');
-
-    return {
-      text,
-      mediaUrls: [],
-      quickActions: [
-        { label: isTagalog ? 'Buksan ang Range Estimator' : 'Open Range Estimator', action: 'calculate_model', payload: 'vf-5-plus' },
-        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
-      ]
-    };
-  }
-
-  // Price, financing, discount, promo, down payment inquiries
+  // 12. Price, financing, discount, promo, down payment inquiries
   if (q.includes('price') || q.includes('presyo') || q.includes('magkano') || q.includes('srp') || q.includes('cost') || q.includes('financing') || q.includes('monthly') || q.includes('promo') || q.includes('discount') || q.includes('down payment') || q.includes('hulog')) {
+    if (context.repeatTopicCount > 0) {
+      const text = isTagalog
+        ? [
+            'DETALYADONG FINANCING AT BUWANANG HULOG',
+            '',
+            'Narito ang tinatayang buwanang hulog batay sa 20% down payment kasama ang ating partner banks (BDO, BPI, Metrobank, Security Bank):',
+            '',
+            'MGA SAMPOL NA HULOG (36 BUWAN / 20% DOWN)',
+            '- VF 3 (Battery Subscription): ~₱11,800 bawat buwan (Down Payment: ₱118,000)',
+            '- VF 3 (Outright): ~₱14,900 bawat buwan (Down Payment: ₱149,000)',
+            '- VF 5 Plus (Battery Subscription): ~₱16,400 bawat buwan (Down Payment: ₱198,400)',
+            '- VF 5 Plus (Outright): ~₱19,800 bawat buwan (Down Payment: ₱238,200)',
+            '',
+            'MGA BENEPISYO SA FINANCING',
+            '- 0% Excise Tax: Alinsunod sa EVIDA Law, walang excise tax na ipinapataw.',
+            '- Mabilis na Pag-apruba: 24-48 oras na pre-approval kasama ang aming finance specialists.',
+            '',
+            generateDynamicClosingQuestion('pricing', activeModel, context, lang)
+          ].join('\n')
+        : [
+            'DETAILED BANK FINANCING AND MONTHLY BREAKDOWN',
+            '',
+            'Here is the estimated monthly amortization based on a 20% down payment with our partner banks (BDO, BPI, Metrobank, Security Bank):',
+            '',
+            'SAMPLE AMORTIZATION (36 MONTHS / 20% DOWN)',
+            '- VF 3 (Battery Subscription): ~₱11,800 / month (Down Payment: ₱118,000)',
+            '- VF 3 (Outright): ~₱14,900 / month (Down Payment: ₱149,000)',
+            '- VF 5 Plus (Battery Subscription): ~₱16,400 / month (Down Payment: ₱198,400)',
+            '- VF 5 Plus (Outright): ~₱19,800 / month (Down Payment: ₱238,200)',
+            '',
+            'FINANCING PRIVILEGES',
+            '- 0% Excise Tax: Fully exempt from excise taxes under national EVIDA law.',
+            '- Fast-Track Bank Approvals: 24 to 48-hour pre-approval turnaround.',
+            '',
+            generateDynamicClosingQuestion('pricing', activeModel, context, lang)
+          ].join('\n');
+
+      return {
+        text,
+        mediaUrls: [],
+        quickActions: [
+          { label: isTagalog ? 'Kwentahin sa Calculator' : 'Use Calculator', action: 'calculate_model', payload: activeModelId },
+          { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive', payload: activeModelId },
+        ]
+      };
+    }
+
     const text = isTagalog
       ? [
           'OPISYAL NA PRESYO AT FINANCING NG VINFAST PHILIPPINES',
@@ -1719,18 +2365,18 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Narito ang opisyal na SRP at financing terms para sa ating kasalukuyang lineup:',
           '',
           'LISTAHAN NG PRESYO',
-          '- VF 3: P745,000 (Diretso) o P590,000 (Battery Subscription)',
-          '- VF 5 Plus: P1,099,000 (Diretso) o P949,000 (Battery Subscription)',
-          '- VF 6 Eco: P1,499,000 | VF 6 Plus: P1,699,000',
-          '- VF 7 Eco: P1,760,000 | VF 7 Plus AWD: P2,380,000',
-          '- VF 9: P4,990,000 hanggang P5,390,000',
+          '- VF 3: ₱745,000 (Diretso) o ₱590,000 (Battery Subscription)',
+          '- VF 5 Plus: ₱1,191,000 (Diretso) o ₱992,000 (Battery Subscription)',
+          '- VF 6 Eco: ₱1,499,000 | VF 6 Plus: ₱1,699,000',
+          '- VF 7 Eco: ₱1,760,000 | VF 7 Plus AWD: ₱2,380,000',
+          '- VF 9: ₱4,990,000 hanggang ₱5,390,000',
           '',
           'MGA OPSYON SA FINANCING',
           '- Paunang Bayad (Down Payment): Mula 10% hanggang 50%',
           '- Tagal ng Loan: 12, 24, 36, 48, o 60 buwan',
-          '- Interes: May paborableng 8.0% taunang interes kasama ang aming partner banks (BDO, BPI, Metrobank, Security Bank)',
+          '- Interes: May paborableng 8.0% taunang interes kasama ang partner banks',
           '',
-          'Ipaghahanda ba kita ng custom bank quotation batay sa 20% down payment?'
+          generateDynamicClosingQuestion('pricing', activeModel, context, lang)
         ].join('\n')
       : [
           'OFFICIAL VINFAST PHILIPPINES PRICING AND PROMOTIONS',
@@ -1738,32 +2384,34 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Here are the official SRP and financing parameters across our current lineup:',
           '',
           'PRICE LIST',
-          '- VF 3: P745,000 (Outright) or P590,000 (Battery Subscription)',
-          '- VF 5 Plus: P1,099,000 (Outright) or P949,000 (Battery Subscription)',
-          '- VF 6 Eco: P1,499,000 | VF 6 Plus: P1,699,000',
-          '- VF 7 Eco: P1,760,000 | VF 7 Plus AWD: P2,380,000',
-          '- VF 9: P4,990,000 to P5,390,000',
+          '- VF 3: ₱745,000 (Outright) or ₱590,000 (Battery Subscription)',
+          '- VF 5 Plus: ₱1,191,000 (Outright) or ₱992,000 (Battery Subscription)',
+          '- VF 6 Eco: ₱1,499,000 | VF 6 Plus: ₱1,699,000',
+          '- VF 7 Eco: ₱1,760,000 | VF 7 Plus AWD: ₱2,380,000',
+          '- VF 9: ₱4,990,000 to ₱5,390,000',
           '',
           'FINANCING OPTIONS',
           '- Down Payment: Flexible terms from 10% to 50%',
           '- Loan Tenure: 12, 24, 36, 48, or 60 months',
-          '- Indicative Interest Rate: Competitive 8.0% annual interest with our partner banks (BDO, BPI, Metrobank, Security Bank)',
+          '- Indicative Interest Rate: Competitive 8.0% annual interest with our partner banks',
           '',
-          'Shall I prepare a custom bank financing quotation for you based on a 20% down payment?'
+          generateDynamicClosingQuestion('pricing', activeModel, context, lang)
         ].join('\n');
 
     return {
       text,
       mediaUrls: [],
       quickActions: [
-        { label: isTagalog ? 'Gamitin ang Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: 'vf-5-plus' },
-        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
+        { label: isTagalog ? 'Gamitin ang Calculator' : 'Use Financial Calculator', action: 'calculate_model', payload: activeModelId },
+        { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: activeModelId },
       ]
     };
   }
 
-  // Tagalog / Taglish greeting or general greeting
-  if (q.includes('kamusta') || q.includes('kumusta') || q.includes('hello') || q.includes('hi') || q.includes('gandang') || q.includes('magandang')) {
+  // 13. Greeting or general consultation
+  const isGreeting = q.includes('kamusta') || q.includes('kumusta') || q.includes('hello') || q.includes('hi') || q.includes('gandang') || q.includes('magandang');
+
+  if (isGreeting) {
     const text = isTagalog
       ? [
           'MALIGAYANG PAGDATING SA VINFAST PHILIPPINES',
@@ -1771,13 +2419,13 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Ako ang iyong opisyal na VinFast Sales Specialist. Narito ako upang tulungan kang pumili ng tamang VinFast EV, mag-compute ng iyong monthly amortization, at mag-schedule ng test drive sa pinakamalapit na dealership sa inyong lugar.',
           '',
           'MGA PANGUNAHING MODELO',
-          '- VF 3: P590,000 (Battery Subscription) | P745,000 (Diretso) - 210 km range',
-          '- VF 5 Plus: P949,000 (Battery Subscription) | P1,099,000 (Diretso) - 326 km range',
-          '- VF 6: P1,499,000 hanggang P1,699,000 - 399 km range',
-          '- VF 7: P1,760,000 hanggang P2,380,000 - 450 km range',
-          '- VF 9: P4,990,000 hanggang P5,390,000 - 600+ km range',
+          '- VF 3: ₱590,000 (Battery Subscription) | ₱745,000 (Diretso) - 210 km range',
+          '- VF 5 Plus: ₱992,000 (Battery Subscription) | ₱1,191,000 (Diretso) - 326 km range',
+          '- VF 6: ₱1,499,000 hanggang ₱1,699,000 - 399 km range',
+          '- VF 7: ₱1,760,000 hanggang ₱2,380,000 - 450 km range',
+          '- VF 9: ₱4,990,000 hanggang ₱5,390,000 - 600+ km range',
           '',
-          'Aling VinFast model ang nais mong suriin o i-test drive ngayong linggo?'
+          generateDynamicClosingQuestion('general', 'VF 3', context, lang)
         ].join('\n')
       : [
           'WELCOME TO VINFAST PHILIPPINES',
@@ -1785,13 +2433,13 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           'Hello, I am your VinFast Senior Sales Specialist and EV Consultant. I can assist you with official Philippine pricing, battery subscription plans, real-world range calculations, and connect you with any of our 29 authorized showrooms across Luzon, Visayas, and Mindanao.',
           '',
           'POPULAR CHOICES',
-          '- VF 3: P590,000 (Battery Subscription) | P745,000 (Outright) - 210 km range',
-          '- VF 5 Plus: P949,000 (Battery Subscription) | P1,099,000 (Outright) - 326 km range',
-          '- VF 6: P1,499,000 to P1,699,000 - 399 km range',
-          '- VF 7: P1,760,000 to P2,380,000 - 450 km range',
-          '- VF 9: P4,990,000 to P5,390,000 - 600+ km range',
+          '- VF 3: ₱590,000 (Battery Subscription) | ₱745,000 (Outright) - 210 km range',
+          '- VF 5 Plus: ₱992,000 (Battery Subscription) | ₱1,191,000 (Outright) - 326 km range',
+          '- VF 6: ₱1,499,000 to ₱1,699,000 - 399 km range',
+          '- VF 7: ₱1,760,000 to ₱2,380,000 - 450 km range',
+          '- VF 9: ₱4,990,000 to ₱5,390,000 - 600+ km range',
           '',
-          'Which VinFast model would you like to explore or test drive today?'
+          generateDynamicClosingQuestion('general', 'VF 3', context, lang)
         ].join('\n');
 
     return {
@@ -1805,7 +2453,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
     };
   }
 
-  // Non-automotive queries: steer back politely to automotive options
+  // 14. Non-automotive queries: steer back politely to automotive options
   const isNonAutomotive = q.includes('recipe') || q.includes('luto') || q.includes('ulam') || q.includes('weather') || q.includes('panahon') || q.includes('crypto') || q.includes('movie') || q.includes('pelikula') || q.includes('song') || q.includes('kanta') || q.includes('joke');
   if (isNonAutomotive) {
     const text = isTagalog
@@ -1814,18 +2462,18 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
           '',
           'Bagamat ako ay nakalaan para sa mga sasakyan at serbisyo ng VinFast, labis kong ikagagalak na tulungan kang mahanap ang tamang electric vehicle para sa iyong pamumuhay at biyahe sa Pilipinas.',
           '',
-          'Mayroon kaming mga modelo mula sa urban VF 3 simula P590,000 hanggang sa marangyang 7-seater VF 9 flagship SUV.',
+          'Mayroon kaming mga modelo mula sa urban VF 3 simula ₱590,000 hanggang sa marangyang 7-seater VF 9 flagship SUV.',
           '',
-          'Aling VinFast model ang nais mong suriin para sa iyong pang-araw-araw na biyahe?'
+          generateDynamicClosingQuestion('general', 'VF 3', context, lang)
         ].join('\n')
       : [
           'VINFAST SALES ASSISTANCE',
           '',
           'While I specialize exclusively in VinFast automotive solutions, I would love to help you find the perfect electric vehicle for your daily lifestyle and commute in the Philippines.',
           '',
-          'We offer an exciting lineup ranging from the urban VF 3 starting at P590,000 up to the luxurious 7-seater VF 9 flagship SUV.',
+          'We offer an exciting lineup ranging from the urban VF 3 starting at ₱590,000 up to the luxurious 7-seater VF 9 flagship SUV.',
           '',
-          'Which VinFast model would you like to explore for your daily driving needs?'
+          generateDynamicClosingQuestion('general', 'VF 3', context, lang)
         ].join('\n');
 
     return {
@@ -1838,7 +2486,7 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
     };
   }
 
-  // Default professional sales response
+  // 15. Default fallback sales response leading to a close
   const text = isTagalog
     ? [
         'VINFAST ELECTRIC VEHICLES PILIPINAS',
@@ -1846,13 +2494,13 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
         'Ang VinFast ang nangunguna sa electric mobility revolution sa Pilipinas na may makabagong disenyo, zero gastusin sa gasolina, at pinakamatibay na warranty.',
         '',
         'ANG ATING OPISYAL NA LINEUP',
-        '- VF 3: Mini Electric SUV simula P590,000 (Battery Subscription)',
-        '- VF 5 Plus: Compact Family Crossover simula P949,000 (Battery Subscription)',
-        '- VF 6: Subcompact Italian-Styled Crossover simula P1,499,000',
-        '- VF 7: Aero-Dynamic Midsize Performance Crossover simula P1,760,000',
-        '- VF 9: Presidential 7-Seater Luxury Flagship simula P4,990,000',
+        '- VF 3: Mini Electric SUV simula ₱590,000 (Battery Subscription)',
+        '- VF 5 Plus: Compact Family Crossover simula ₱992,000 (Battery Subscription)',
+        '- VF 6: Subcompact Italian-Styled Crossover simula ₱1,499,000',
+        '- VF 7: Aero-Dynamic Midsize Performance Crossover simula ₱1,760,000',
+        '- VF 9: Presidential 7-Seater Luxury Flagship simula ₱4,990,000',
         '',
-        'Nais mo bang ipag-schedule kita ng test drive sa pinakamalapit na VinFast dealership ngayong linggo?'
+        generateDynamicClosingQuestion('general', activeModel, context, lang)
       ].join('\n')
     : [
         'VINFAST ELECTRIC VEHICLES PHILIPPINES',
@@ -1860,21 +2508,21 @@ export function generateSalesResponse(rawQuery: string, language: string = 'EN')
         'VinFast is leading the Philippine electric mobility revolution with cutting-edge design, zero fuel costs, and unbeatable warranty coverage.',
         '',
         'OUR CURRENT LINEUP',
-        '- VF 3: Mini Electric SUV starting at P590,000 (Battery Subscription)',
-        '- VF 5 Plus: Compact Family Crossover starting at P949,000 (Battery Subscription)',
-        '- VF 6: Subcompact Italian-Styled Crossover starting at P1,499,000',
-        '- VF 7: Aero-Dynamic Midsize Performance Crossover starting at P1,760,000',
-        '- VF 9: Presidential 7-Seater Luxury Flagship starting at P4,990,000',
+        '- VF 3: Mini Electric SUV starting at ₱590,000 (Battery Subscription)',
+        '- VF 5 Plus: Compact Family Crossover starting at ₱992,000 (Battery Subscription)',
+        '- VF 6: Subcompact Italian-Styled Crossover starting at ₱1,499,000',
+        '- VF 7: Aero-Dynamic Midsize Performance Crossover starting at ₱1,760,000',
+        '- VF 9: Presidential 7-Seater Luxury Flagship starting at ₱4,990,000',
         '',
-        'Would you like me to schedule a test drive for you at your nearest VinFast dealership this week?'
+        generateDynamicClosingQuestion('general', activeModel, context, lang)
       ].join('\n');
 
   return {
     text,
     mediaUrls: [],
     quickActions: [
-      { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: 'vf-5-plus' },
-      { label: isTagalog ? 'Kwentahin ang Buwanang Hulog' : 'Calculate Monthly Amortization', action: 'calculate_model', payload: 'vf-5-plus' },
+      { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: activeModelId },
+      { label: isTagalog ? 'Kwentahin ang Buwanang Hulog' : 'Calculate Monthly Amortization', action: 'calculate_model', payload: activeModelId },
       { label: isTagalog ? 'Hanapin ang Pinakamalapit na Dealer' : 'Find Nearest Dealer', action: 'view_dealer' },
     ]
   };

@@ -93,14 +93,15 @@ export const AISalesChat = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     if (!textToSend) setInputText('');
     setIsTyping(true);
 
     // Simulate realistic instantaneous AI response time
     setTimeout(() => {
       const activeLang = sessionLanguage || language;
-      const response = generateSalesResponse(query, activeLang);
+      const response = generateSalesResponse(query, activeLang, updatedMessages);
 
       if (response.detectedLanguage && response.detectedLanguage !== sessionLanguage) {
         setSessionLanguage(response.detectedLanguage);
