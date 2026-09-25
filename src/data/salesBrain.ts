@@ -49,6 +49,14 @@ const MEDIA_MAP: Record<string, { model: string; color: string; url: string }[]>
     { model: 'VF 7', color: 'Silver', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20silver.png' },
     { model: 'VF 7', color: 'White', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20white.png' },
   ],
+  'vf 9': [
+    { model: 'VF 9', color: 'Black', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20black.png' },
+    { model: 'VF 9', color: 'Blue', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20blue.png' },
+    { model: 'VF 9', color: 'Grey', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20grey.png' },
+    { model: 'VF 9', color: 'Red', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20red.png' },
+    { model: 'VF 9', color: 'Silver', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20silver.png' },
+    { model: 'VF 9', color: 'White', url: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20white.png' },
+  ],
 };
 
 /**
@@ -2878,7 +2886,7 @@ export function generateSalesResponse(
   const isPhotoRequest = q.includes('photo') || q.includes('picture') || q.includes('image') || q.includes('look') || q.includes('color') || q.includes('kulay') || q.includes('litrato') || q.includes('larawan') || q.includes('gallery');
 
   if (isPhotoRequest) {
-    const targetKey = activeModelId === 'vf-5-plus' ? 'vf 5' : activeModelId === 'vf-6' ? 'vf 6' : activeModelId === 'vf-7' ? 'vf 7' : 'vf 3';
+    const targetKey = activeModelId === 'vf-5-plus' ? 'vf 5' : activeModelId === 'vf-6' ? 'vf 6' : activeModelId === 'vf-7' ? 'vf 7' : activeModelId === 'vf-9' ? 'vf 9' : 'vf 3';
     const media = MEDIA_MAP[targetKey] || MEDIA_MAP['vf 3'];
     const urls = media.map(m => m.url);
     const urlLines = urls.join('\n\n');
@@ -3790,7 +3798,10 @@ export function generateSalesResponse(
 
     return {
       text,
-      mediaUrls: [],
+      mediaUrls: [
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20black.png',
+        'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20white.png',
+      ],
       quickActions: [
         { label: isTagalog ? 'Mag-book ng Konsultasyon sa VF 9' : 'Book VF 9 Consultation', action: 'book_test_drive', payload: 'vf-9' },
       ]

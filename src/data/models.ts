@@ -269,19 +269,34 @@ export const VEHICLE_MODELS: VehicleModel[] = [
     description: 'The pinnacle of electric luxury. A commanding full-size 6 or 7-passenger SUV equipped with executive captain chairs with massage functionality, dual-motor AWD, and over 600 km range on a single charge.',
     colors: [
       {
-        name: 'Jet Black',
+        name: 'Black',
         hex: '#0F172A',
-        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20black.png',
+        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20black.png',
       },
       {
-        name: 'Zenith Grey',
+        name: 'Blue',
+        hex: '#1D4ED8',
+        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20blue.png',
+      },
+      {
+        name: 'Grey',
         hex: '#64748B',
-        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20grey.png',
+        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20grey.png',
       },
       {
-        name: 'Brahminy White',
+        name: 'Red',
+        hex: '#DC2626',
+        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20red.png',
+      },
+      {
+        name: 'Silver',
+        hex: '#94A3B8',
+        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20silver.png',
+      },
+      {
+        name: 'White',
         hex: '#F8FAFC',
-        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf7%20white.png',
+        imageUrl: 'https://xxaahqcaesyokxaiuclv.supabase.co/storage/v1/object/public/VinFast%20Media/vf9%20white.png',
       },
     ],
     highlights: [
