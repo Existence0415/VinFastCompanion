@@ -129,7 +129,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
   const activeColor = currentModel.colors[selectedColorIndex] || currentModel.colors[0];
 
   return (
-    <section id="estimator" className="pb-16 lg:pb-24 pt-4 lg:pt-8 relative w-full max-w-full overflow-x-hidden">
+    <section id="estimator" className="pb-16 lg:pb-24 pt-1 sm:pt-2 lg:pt-2 scroll-mt-20 relative w-full max-w-full overflow-x-hidden">
       <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
         {/* 1. Model Selector Strip */}
         <div className="glass-card rounded-xl sm:rounded-2xl p-1.5 sm:p-3 mb-4 sm:mb-6 border border-slate-800 shadow-2xl w-full max-w-full">

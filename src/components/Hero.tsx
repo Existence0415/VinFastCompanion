@@ -11,7 +11,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenTestDrive, language }) => {
   const t = TRANSLATIONS[language].hero;
 
   return (
-    <section className="relative overflow-hidden pt-6 pb-12 sm:pt-8 sm:pb-16 lg:pt-14 lg:pb-20 w-full max-w-full">
+    <section className="relative overflow-hidden pt-6 pb-3 sm:pt-8 sm:pb-4 lg:pt-12 lg:pb-6 w-full max-w-full">
       {/* High-tech ambient background glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 max-w-5xl h-[380px] bg-gradient-to-b from-blue-600/15 via-cyan-500/10 to-transparent blur-3xl pointer-events-none -z-10" />
       <div className="absolute -top-24 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
