@@ -255,7 +255,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
             <div className="glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 relative overflow-hidden group">
               <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 mb-3 sm:mb-4">
+              <div className="relative z-10 flex flex-col xs:flex-row xs:items-center justify-between gap-2 mb-3 sm:mb-4">
                 <div>
                   <span className="text-[10px] sm:text-xs font-semibold text-blue-400 uppercase tracking-wider">
                     {t.exteriorFinish}
@@ -285,13 +285,17 @@ export const Estimator: React.FC<EstimatorProps> = ({
               </div>
 
               {/* Vehicle Image Preview (No enlargement on main page) */}
-              <div className="relative w-full h-44 sm:h-72 flex items-center justify-center my-1 sm:my-2 select-none">
+              <div className="relative w-full h-44 sm:h-72 flex items-center justify-center my-1 sm:my-2 select-none overflow-hidden">
                 {activeColor?.imageUrl ? (
-                  <div className="relative max-h-full max-w-full flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center p-2 sm:p-4">
                     <img
                       src={activeColor.imageUrl}
                       alt={`${currentModel.name} in ${activeColor.name}`}
-                      className="max-h-full max-w-full object-contain drop-shadow-[0_20px_25px_rgba(0,132,255,0.2)] pointer-events-none"
+                      className={`object-contain pointer-events-none select-none transition-all duration-300 ${
+                        ['vf-3', 'vf-7', 'vf-9'].includes(currentModel.id)
+                          ? 'max-h-[76%] max-w-[84%] sm:max-h-[82%] sm:max-w-[86%] rounded-2xl shadow-lg'
+                          : 'max-h-full max-w-full drop-shadow-[0_20px_25px_rgba(0,132,255,0.2)]'
+                      }`}
                     />
                   </div>
                 ) : (
@@ -303,7 +307,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
               </div>
 
               {/* Vehicle Quick Feature Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 pt-3 sm:pt-4 border-t border-slate-800/80 text-[11px] sm:text-xs">
+              <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 pt-3 sm:pt-4 border-t border-slate-800/80 text-[11px] sm:text-xs">
                 <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                   <div className="text-slate-400 font-medium">{t.battery}</div>
                   <div className="font-semibold text-white mt-0.5">{currentModel.batteryKwh} kWh</div>
