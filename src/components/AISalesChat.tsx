@@ -52,6 +52,7 @@ export const AISalesChat = ({
   const [messages, setMessages] = useState<ChatMessage[]>([getWelcomeMessage(language)]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isDeepSeekLoading, setIsDeepSeekLoading] = useState(false);
   const [sessionLanguage, setSessionLanguage] = useState<string | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; title?: string } | null>(null);
 
@@ -84,7 +85,7 @@ export const AISalesChat = ({
     }
   }, [initialPrompt]);
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputText).trim();
     if (!query) return;
 
@@ -100,9 +101,56 @@ export const AISalesChat = ({
     if (!textToSend) setInputText('');
     setIsTyping(true);
 
-    // Simulate realistic instantaneous AI response time
+    const activeLang = sessionLanguage || language;
+
+    // Show subtle knowledge hub loading indicator after a small delay if the request is still pending
+    const deepSeekTimer = setTimeout(() => {
+      setIsDeepSeekLoading(true);
+    }, 280);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: query,
+          language: activeLang,
+          history: updatedMessages,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        clearTimeout(deepSeekTimer);
+        setIsDeepSeekLoading(false);
+
+        if (data.detectedLanguage && data.detectedLanguage !== sessionLanguage) {
+          setSessionLanguage(data.detectedLanguage);
+        }
+
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          sender: 'assistant',
+          text: data.text,
+          mediaUrls: data.mediaUrls || [],
+          suggestedDealer: data.suggestedDealer,
+          quickActions: data.quickActions,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+        setIsTyping(false);
+        return;
+      }
+    } catch {
+      // Backend offline or unreachable -> fallback gracefully to client-side salesBrain
+    }
+
+    clearTimeout(deepSeekTimer);
+    setIsDeepSeekLoading(false);
+
+    // Client-side fallback
     setTimeout(() => {
-      const activeLang = sessionLanguage || language;
       const response = generateSalesResponse(query, activeLang, updatedMessages);
 
       if (response.detectedLanguage && response.detectedLanguage !== sessionLanguage) {
@@ -121,7 +169,7 @@ export const AISalesChat = ({
 
       setMessages((prev) => [...prev, assistantMessage]);
       setIsTyping(false);
-    }, 450);
+    }, 300);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -412,16 +460,40 @@ export const AISalesChat = ({
               );
             })}
 
-            {/* Typing indicator */}
+            {/* Typing & Knowledge Hub Loading indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-slate-400 text-xs flex items-center gap-2">
-                  <div className="flex space-x-1">
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                  <span className="text-[11px] sm:text-xs">{t.typingIndicator}</span>
+                <div
+                  className={`rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs flex items-center gap-2.5 shadow-sm transition-all duration-300 ${
+                    isDeepSeekLoading
+                      ? 'bg-slate-900/95 border border-blue-500/50 text-blue-200'
+                      : 'bg-slate-900 border border-slate-800 text-slate-400'
+                  }`}
+                >
+                  {isDeepSeekLoading ? (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] sm:text-xs font-medium text-blue-300">
+                          {language === 'PH' ? 'Kumukonsulta sa kaalaman ng VinFast...' : 'Consulting knowledge hub...'}
+                        </span>
+                        <div className="flex space-x-1">
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex space-x-1">
+                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                      </div>
+                      <span className="text-[11px] sm:text-xs">{t.typingIndicator}</span>
+                    </>
+                  )}
                 </div>
               </div>
             )}

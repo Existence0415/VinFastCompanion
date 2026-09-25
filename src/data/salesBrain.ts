@@ -1,7 +1,7 @@
 import type { Dealer, ChatMessage } from '../types';
 import { DEALERS } from './dealers';
 
-interface BrainResponse {
+export interface BrainResponse {
   text: string;
   mediaUrls: string[];
   suggestedDealer?: Dealer;
@@ -11,6 +11,7 @@ interface BrainResponse {
     payload?: string;
   }[];
   detectedLanguage?: string;
+  isLocalMatch?: boolean;
 }
 
 // Media URLs database
@@ -2828,7 +2829,8 @@ export function generateSalesResponse(
         quickActions: [
           { label: isTagalog ? `I-test Drive ang ${context.lastModel}` : `Test Drive ${context.lastModel}`, action: 'book_test_drive', payload: context.lastModelId || 'vf-3' },
           { label: isTagalog ? 'Kwentahin ang Buwanan' : 'Calculate Monthly', action: 'calculate_model', payload: context.lastModelId || 'vf-3' },
-        ]
+        ],
+        isLocalMatch: false
       };
     }
 
@@ -2867,7 +2869,8 @@ export function generateSalesResponse(
         { label: isTagalog ? 'Suriin ang VF 3' : 'Explore VF 3', action: 'calculate_model', payload: 'vf-3' },
         { label: isTagalog ? 'Suriin ang VF 5 Plus' : 'Explore VF 5 Plus', action: 'calculate_model', payload: 'vf-5-plus' },
         { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book Test Drive', action: 'book_test_drive' },
-      ]
+      ],
+      isLocalMatch: false
     };
   }
 
@@ -4322,6 +4325,7 @@ export function generateSalesResponse(
       { label: isTagalog ? 'Mag-book ng Test Drive' : 'Book a Test Drive', action: 'book_test_drive', payload: activeModelId },
       { label: isTagalog ? 'Kwentahin ang Buwanang Hulog' : 'Calculate Monthly Amortization', action: 'calculate_model', payload: activeModelId },
       { label: isTagalog ? 'Hanapin ang Pinakamalapit na Dealer' : 'Find Nearest Dealer', action: 'view_dealer' },
-    ]
+    ],
+    isLocalMatch: false
   };
 }
