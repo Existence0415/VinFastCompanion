@@ -14,7 +14,7 @@ export const Footer: React.FC<FooterProps> = ({ language }) => {
       <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
         <div className="mb-8 sm:mb-12">
           {/* Col 1: Brand & Mission */}
-          <div className="max-w-2xl space-y-3 sm:space-y-4">
+          <div className="w-full max-w-full space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 flex items-center justify-center overflow-hidden shadow-md border border-slate-700/50 shrink-0">
                 <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
@@ -26,7 +26,7 @@ export const Footer: React.FC<FooterProps> = ({ language }) => {
                 {t.networkBadge}
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs text-slate-400 leading-relaxed">
+            <p className="text-[10px] sm:text-[11px] lg:text-xs text-slate-400 leading-relaxed whitespace-nowrap">
               {t.mission}
             </p>
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-[11px] sm:text-xs text-slate-300">
