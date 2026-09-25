@@ -11,13 +11,13 @@ export const Hero: React.FC<HeroProps> = ({ onOpenTestDrive, language }) => {
   const t = TRANSLATIONS[language].hero;
 
   return (
-    <section className="relative overflow-hidden pt-8 pb-16 lg:pt-14 lg:pb-20">
+    <section className="relative overflow-hidden pt-6 pb-12 sm:pt-8 sm:pb-16 lg:pt-14 lg:pb-20 w-full max-w-full">
       {/* High-tech ambient background glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 max-w-5xl h-[380px] bg-gradient-to-b from-blue-600/15 via-cyan-500/10 to-transparent blur-3xl pointer-events-none -z-10" />
       <div className="absolute -top-24 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="text-center max-w-4xl mx-auto">
+      <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
+        <div className="text-center w-full max-w-full lg:max-w-4xl mx-auto">
           {/* Top Pill / Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-blue-950/70 border border-blue-800/60 text-blue-300 text-[11px] sm:text-sm font-medium mb-4 sm:mb-6 shadow-inner">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />

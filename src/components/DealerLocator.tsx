@@ -60,14 +60,14 @@ export const DealerLocator = ({
       id="dealers"
       data-testid="dealers-modal"
       onClick={onClose}
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 cursor-pointer"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-0 lg:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[94vh] sm:max-h-[90vh] flex flex-col cursor-default"
+        className="relative w-full max-w-full lg:max-w-5xl h-full lg:h-auto max-h-[100dvh] lg:max-h-[90vh] bg-slate-950 border-0 lg:border border-slate-800 rounded-none lg:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col cursor-default"
       >
         {/* Header Bar */}
-        <div className="p-3.5 sm:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2">
+        <div className="p-3.5 sm:p-5 lg:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2">
           <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md shrink-0">
               <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
@@ -145,7 +145,7 @@ export const DealerLocator = ({
         </div>
 
         {/* Dealers Grid (Scrollable) */}
-        <div className="p-3 sm:p-6 overflow-y-auto flex-grow max-h-[520px]">
+        <div className="p-3.5 sm:p-5 lg:p-6 overflow-y-auto flex-grow max-h-none lg:max-h-[560px]">
           {filteredDealers.length === 0 ? (
             <div className="glass-card rounded-2xl p-12 text-center text-slate-400">
               <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-3" />

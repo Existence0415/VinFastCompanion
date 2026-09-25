@@ -129,11 +129,11 @@ export const Estimator: React.FC<EstimatorProps> = ({
   const activeColor = currentModel.colors[selectedColorIndex] || currentModel.colors[0];
 
   return (
-    <section id="estimator" className="pb-16 lg:pb-24 pt-4 lg:pt-8 relative">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+    <section id="estimator" className="pb-16 lg:pb-24 pt-4 lg:pt-8 relative w-full max-w-full overflow-x-hidden">
+      <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
         {/* 1. Model Selector Strip */}
-        <div className="glass-card rounded-2xl p-2 sm:p-3 mb-4 sm:mb-6 border border-slate-800 shadow-2xl">
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
+        <div className="glass-card rounded-xl sm:rounded-2xl p-1.5 sm:p-3 mb-4 sm:mb-6 border border-slate-800 shadow-2xl w-full max-w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 sm:gap-2 w-full">
             {VEHICLE_MODELS.map((model) => {
               const isSelected = model.id === currentModel.id;
               return (
@@ -251,9 +251,9 @@ export const Estimator: React.FC<EstimatorProps> = ({
         </div>
 
         {/* Two-Column Grid: Sliders & Visual on Left, Real-time Output Cards on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-start w-full max-w-full">
           {/* LEFT COLUMN: Vehicle Showcase & Sliders (7 cols) */}
-          <div className="lg:col-span-7 space-y-4 sm:space-y-6">
+          <div className="w-full max-w-full lg:col-span-7 space-y-4 sm:space-y-6">
             {/* Interactive Vehicle Visual & Color Switcher */}
             <div className="glass-card rounded-2xl p-4 sm:p-6 border border-slate-800 relative overflow-hidden group">
               <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -430,7 +430,7 @@ export const Estimator: React.FC<EstimatorProps> = ({
           </div>
 
           {/* RIGHT COLUMN: Real-time Output Cards (5 cols) */}
-          <div className="lg:col-span-5 space-y-4 sm:space-y-6">
+          <div className="w-full max-w-full lg:col-span-5 space-y-4 sm:space-y-6">
             {/* Card 1: Estimated Monthly Amortization */}
             <div className="glass-card rounded-2xl p-4 sm:p-6 border border-blue-600/40 relative overflow-hidden glow-blue">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />

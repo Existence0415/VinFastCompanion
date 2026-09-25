@@ -24,8 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   const t = TRANSLATIONS['EN'].nav;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 transition-all">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 w-full max-w-full bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 transition-all">
+      <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
         {/* Left: VinFast Emblem & Title */}
         <a href="#" className="flex items-center gap-2 sm:gap-3.5 group min-w-0">
           <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-1 shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-700/50 shrink-0">

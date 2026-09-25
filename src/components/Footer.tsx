@@ -10,8 +10,8 @@ export const Footer: React.FC<FooterProps> = ({ language }) => {
   const t = TRANSLATIONS[language].footer;
 
   return (
-    <footer className="bg-slate-950 border-t border-slate-800/80 pt-10 sm:pt-16 pb-8 sm:pb-12 text-slate-400 text-xs">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+    <footer className="bg-slate-950 border-t border-slate-800/80 pt-10 sm:pt-16 pb-8 sm:pb-12 text-slate-400 text-xs w-full max-w-full">
+      <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
         <div className="mb-8 sm:mb-12">
           {/* Col 1: Brand & Mission */}
           <div className="max-w-2xl space-y-3 sm:space-y-4">

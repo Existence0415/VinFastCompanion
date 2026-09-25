@@ -61,7 +61,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex flex-col font-sans relative">
+    <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex flex-col font-sans relative w-full max-w-full overflow-x-hidden">
       {/* Navigation Header */}
       <Header
         onOpenTestDrive={() => handleOpenTestDrive()}
@@ -73,7 +73,7 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-grow">
+      <main className="flex-grow w-full max-w-full overflow-x-hidden">
         {/* Hero Section */}
         <Hero
           onOpenTestDrive={() => handleOpenTestDrive()}

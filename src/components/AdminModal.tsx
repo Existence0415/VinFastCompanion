@@ -169,10 +169,18 @@ export const AdminModal = ({ isOpen, onClose, language }: AdminModalProps) => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
-      <div className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[94vh] sm:max-h-[90vh] flex flex-col">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-0 lg:p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-full lg:max-w-5xl h-full lg:h-auto max-h-[100dvh] lg:max-h-[90vh] bg-slate-950 border-0 lg:border border-slate-800 rounded-none lg:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col cursor-default"
+      >
         {/* Header */}
-        <div className="p-3.5 sm:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
+        <div className="p-3.5 sm:p-5 lg:p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 border border-slate-700/50 flex items-center justify-center overflow-hidden shadow-md shrink-0">
               <img src="/vinfast-logo.png" alt="VinFast" className="w-full h-full object-contain" />
@@ -268,7 +276,7 @@ export const AdminModal = ({ isOpen, onClose, language }: AdminModalProps) => {
         </div>
 
         {/* Bookings Table */}
-        <div className="p-6 max-h-[480px] overflow-y-auto">
+        <div className="p-3.5 sm:p-5 lg:p-6 max-h-none lg:max-h-[500px] overflow-y-auto flex-grow">
           {filtered.length === 0 ? (
             <div className="text-center py-12 text-slate-500 text-sm">
               {t.noReservations} "{getStatusLabel(statusFilter)}".

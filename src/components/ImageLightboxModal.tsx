@@ -44,17 +44,17 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
       aria-modal="true"
       aria-label={title || 'Enlarged photo preview'}
       onClick={onClose}
-      className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-6 animate-in fade-in duration-200 cursor-pointer select-none"
+      className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-2 sm:p-4 lg:p-6 animate-in fade-in duration-200 cursor-pointer select-none w-full max-w-full"
     >
       {/* Top Controls Bar */}
       <div
-        className="w-full flex items-center justify-between z-20 shrink-0 gap-3"
+        className="w-full flex items-center justify-between z-20 shrink-0 gap-2 sm:gap-3"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title / Badge */}
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-200 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] sm:text-xs text-slate-200 shadow-xl backdrop-blur-md min-w-0">
           <Sparkles className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-          <span className="font-semibold truncate max-w-[200px] sm:max-w-md">
+          <span className="font-semibold truncate max-w-[180px] sm:max-w-md">
             {title || (language === 'PH' ? 'Opisyal na Litrato ng VinFast' : 'Official VinFast Showcase Photo')}
           </span>
         </div>
@@ -64,7 +64,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
           type="button"
           onClick={onClose}
           aria-label={t.closePhoto || 'Close enlarged photo'}
-          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-900/95 hover:bg-red-600 border border-slate-700 hover:border-red-500 text-slate-200 hover:text-white shadow-2xl transition-all cursor-pointer group"
+          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-900/95 hover:bg-red-600 border border-slate-700 hover:border-red-500 text-slate-200 hover:text-white shadow-2xl transition-all cursor-pointer group shrink-0"
           title={t.closePhoto || 'Close (Esc)'}
         >
           <span className="text-xs font-semibold hidden sm:inline">
@@ -77,7 +77,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
       {/* Main Enlarged Image Display */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="my-auto relative max-w-5xl w-full flex flex-col items-center justify-center p-2 sm:p-4 cursor-default"
+        className="my-auto relative max-w-full lg:max-w-5xl w-full flex flex-col items-center justify-center p-1 sm:p-4 cursor-default"
       >
         <img
           src={imageUrl}
