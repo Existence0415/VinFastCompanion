@@ -299,6 +299,8 @@ export interface ConversationContext {
   lastModelId?: 'vf-3' | 'vf-5-plus' | 'vf-6' | 'vf-7' | 'vf-9';
   lastTopic?: 'installment' | 'pricing' | 'subscription' | 'colors' | 'photos' | 'specs' | 'dealers' | 'test_drive' | 'comparison' | 'savings' | 'general';
   lastClosingQuestion?: string;
+  lastAssistantText?: string;
+  lastDealer?: Dealer;
   repeatModelCount: number;
   repeatTopicCount: number;
   totalTurns: number;
@@ -313,6 +315,8 @@ export function extractConversationContext(history: ChatMessage[] = [], currentQ
   let lastModelId: ConversationContext['lastModelId'];
   let lastTopic: ConversationContext['lastTopic'];
   let lastClosingQuestion: string | undefined;
+  let lastAssistantText: string | undefined;
+  let lastDealer: Dealer | undefined;
   let repeatModelCount = 0;
   let repeatTopicCount = 0;
 
@@ -346,9 +350,12 @@ export function extractConversationContext(history: ChatMessage[] = [], currentQ
     }
 
     if (!lastClosingQuestion && msg.sender === 'assistant') {
-      const lines = msg.text.trim().split('\n').filter(l => l.trim().length > 0);
-      if (lines.length > 0) {
-        lastClosingQuestion = lines[lines.length - 1];
+      const lines = msg.text.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const questionLine = lines.slice().reverse().find(l => l.endsWith('?') || l.includes('?'));
+      lastClosingQuestion = questionLine || (lines.length > 0 ? lines[lines.length - 1] : undefined);
+      lastAssistantText = msg.text;
+      if (msg.suggestedDealer) {
+        lastDealer = msg.suggestedDealer;
       }
     }
 
@@ -380,6 +387,8 @@ export function extractConversationContext(history: ChatMessage[] = [], currentQ
     lastModelId,
     lastTopic,
     lastClosingQuestion,
+    lastAssistantText,
+    lastDealer,
     repeatModelCount,
     repeatTopicCount,
     totalTurns: history.length,
@@ -442,10 +451,963 @@ export function detectTopicInText(text: string): ConversationContext['lastTopic'
 }
 
 /**
+ * Detects affirmative responses across supported languages (EN, PH, CEB, ILO, ZH, ES, JA, KO, etc.)
+ */
+export function isAffirmative(rawQuery: string): boolean {
+  const q = rawQuery.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?!]/g, '').trim();
+
+  const exactMatches = new Set([
+    // English
+    'yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'k', 'kk', 'yes please', 'sure please',
+    'yes po', 'ok po', 'okay po', 'sure thing', 'book it', 'book', 'schedule it', 'schedule',
+    'go ahead', 'let\'s do it', 'lets do it', 'i want to', 'i\'d like to', 'i would like to',
+    'definitely', 'absolutely', 'sounds good', 'proceed', 'confirm', 'confirmed', 'sign me up',
+    'reserve', 'reserve it', 'please', 'why not', 'alright', 'all right', 'cool',
+    // Tagalog / Filipino
+    'oo', 'opo', 'oho', 'sige', 'sige po', 'sige ba', 'sige go', 'pwede', 'pwede po',
+    'pwedeng pwede', 'game', 'game na', 'g', 'g na', 'tara', 'tara na', 'gusto ko', 'nais ko',
+    'oo naman', 'ayos', 'sige book mo', 'sige schedule mo', 'pa-book', 'pa book', 'pa-schedule',
+    'pa schedule', 'paschedule', 'magpa-book', 'magpa-schedule', 'payag ako', 'sige i-book mo',
+    'sige ituloy mo', 'ituloy mo',
+    // Bisaya / Cebuano
+    'o lagi', 'puyde', 'puydi', 'uyon ko', 'palihug', 'mag-book', 'ipadayon', 'sige lang',
+    // Ilonggo / Hiligaynon
+    'huo', 'huo gid', 'luyag ko', 'palihog',
+    // Chinese
+    '是', '是的', '对', '对的', '好的', '好', '行', '可以', '好啊', '没问题', '要', '想要', '想', '预约', '帮我预约', '安排', '太好了', '好呀',
+    // Spanish
+    'sí', 'si', 'claro', 'por favor', 'por supuesto', 'bueno', 'vale', 'de acuerdo', 'me gustaría', 'quiero', 'adelante', 'reservar',
+    // Japanese
+    'はい', 'ええ', 'お願いします', 'お願い', 'いいですね', '予約したい', '予約してください', 'そうですね', 'ぜひ',
+    // Korean
+    '네', '예', '좋아요', '좋습니다', '부탁해요', '부탁합니다', '예약해 주세요', '예약할게요', '응', '그래',
+    // Malay / Indonesian
+    'ya', 'boleh', 'bisa', 'silakan', 'mau'
+  ]);
+
+  if (exactMatches.has(q)) return true;
+
+  const startWords = [
+    'yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'oo', 'opo', 'sige', 'pwede', 'game', 'tara',
+    'huo', '好的', '可以', 'si', 'sí', 'claro', 'はい', '네'
+  ];
+  for (const sw of startWords) {
+    if (q === sw || q.startsWith(`${sw} `) || q.startsWith(`${sw},`)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Detects negative responses across supported languages
+ */
+export function isNegative(rawQuery: string): boolean {
+  const q = rawQuery.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?!]/g, '').trim();
+
+  const exactMatches = new Set([
+    // English
+    'no', 'nope', 'nah', 'not now', 'not yet', 'no thanks', 'no thank you', 'pass', 'maybe later',
+    'later', 'don\'t want', 'dont want', 'no need', 'cancel', 'not interested', 'never mind',
+    'nevermind', 'negative', 'i decline', 'decline',
+    // Tagalog / Filipino
+    'hindi', 'hindi po', 'hindi muna', 'wag muna', 'huwag muna', 'di muna', 'ayaw', 'ayoko',
+    'ayaw ko', 'wala', 'wala muna', 'salamat na lang', 'wag na', 'huwag na', 'di na lang',
+    'di bale na lang', 'ayoko muna',
+    // Bisaya / Cebuano
+    'dili', 'dili lang', 'dili lang una', 'dili sa', 'ayaw lang', 'ayaw sa', 'dili ko', 'wala lang',
+    'unya na', 'sunod na lang',
+    // Ilonggo / Hiligaynon
+    'indi', 'indi anay', 'indi ko', 'ayaw lang', 'indi lang',
+    // Chinese
+    '不', '不是', '不用', '不要', '不用了', '暂时不用', '改天', '改天吧', '先不用', '不行', '算了吧', '不需要',
+    // Spanish
+    'no gracias', 'ahora no', 'por ahora no', 'no hace falta', 'mas tarde', 'cancelar',
+    // Japanese
+    'いいえ', '結構です', 'まだいいです', '今はいいです', 'やめておきます', 'いりません',
+    // Korean
+    '아니오', '아니요', '괜찮아요', '나중에요', '안 할게요', '필요 없어요',
+  ]);
+
+  if (exactMatches.has(q)) return true;
+
+  const startWords = ['no', 'nope', 'hindi', 'dili', 'indi', '不用', '不要', 'いいえ', '아니오'];
+  for (const sw of startWords) {
+    if (q === sw || q.startsWith(`${sw} `) || q.startsWith(`${sw},`)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Detects mentions of preferred schedule dates or times (Tomorrow, Saturday, Weekend, Morning, etc.)
+ */
+export function detectDateTimeInText(rawQuery: string): { label: string; raw: string } | null {
+  const q = rawQuery.trim().toLowerCase();
+
+  // Weekend
+  if (
+    q.includes('this weekend') ||
+    q.includes('weekend') ||
+    q.includes('fin de semana') ||
+    q.includes('周末') ||
+    q.includes('今週末') ||
+    q.includes('이번 주말')
+  ) {
+    return { label: 'This Weekend', raw: 'weekend' };
+  }
+
+  // Saturday
+  if (
+    q.includes('saturday') ||
+    q.includes('sabado') ||
+    q.includes('sábado') ||
+    q.includes('周六') ||
+    q.includes('星期六') ||
+    q.includes('土曜日') ||
+    q.includes('토요일')
+  ) {
+    const isMorning = q.includes('morning') || q.includes('umaga') || q.includes('buntag') || q.includes('上午') || q.includes('午前') || q.includes('오전');
+    const isAfternoon = q.includes('afternoon') || q.includes('hapon') || q.includes('下午') || q.includes('午後') || q.includes('오후');
+    const label = isMorning ? 'This Saturday Morning' : isAfternoon ? 'This Saturday Afternoon' : 'This Saturday';
+    return { label, raw: 'saturday' };
+  }
+
+  // Sunday
+  if (
+    q.includes('sunday') ||
+    q.includes('linggo') ||
+    q.includes('dominggo') ||
+    q.includes('domingo') ||
+    q.includes('周日') ||
+    q.includes('星期天') ||
+    q.includes('日曜日') ||
+    q.includes('일요일')
+  ) {
+    const isMorning = q.includes('morning') || q.includes('umaga') || q.includes('buntag') || q.includes('上午') || q.includes('午前') || q.includes('오전');
+    const isAfternoon = q.includes('afternoon') || q.includes('hapon') || q.includes('下午') || q.includes('午後') || q.includes('오후');
+    const label = isMorning ? 'This Sunday Morning' : isAfternoon ? 'This Sunday Afternoon' : 'This Sunday';
+    return { label, raw: 'sunday' };
+  }
+
+  // Tomorrow
+  if (
+    q.includes('tomorrow') ||
+    q.includes('bukas') ||
+    q.includes('ugma') ||
+    q.includes('bwas') ||
+    q.includes('明天') ||
+    q.includes('mañana') ||
+    q.includes('明日') ||
+    q.includes('내일')
+  ) {
+    const isMorning = q.includes('morning') || q.includes('umaga') || q.includes('buntag') || q.includes('上午') || q.includes('午前') || q.includes('오전');
+    const isAfternoon = q.includes('afternoon') || q.includes('hapon') || q.includes('下午') || q.includes('午後') || q.includes('오후');
+    const label = isMorning ? 'Tomorrow Morning' : isAfternoon ? 'Tomorrow Afternoon' : 'Tomorrow';
+    return { label, raw: 'tomorrow' };
+  }
+
+  // Today
+  if (
+    q.includes('today') ||
+    q.includes('ngayon') ||
+    q.includes('karong adlawa') ||
+    q.includes('今天') ||
+    q.includes('hoy') ||
+    q.includes('今日') ||
+    q.includes('오늘')
+  ) {
+    const isMorning = q.includes('morning') || q.includes('umaga') || q.includes('buntag') || q.includes('上午');
+    const isAfternoon = q.includes('afternoon') || q.includes('hapon') || q.includes('下午');
+    const label = isMorning ? 'Today Morning' : isAfternoon ? 'Today Afternoon' : 'Today';
+    return { label, raw: 'today' };
+  }
+
+  // Weekdays / Specific days
+  if (q.includes('monday') || q.includes('lunes') || q.includes('周一') || q.includes('月曜日') || q.includes('월요일')) return { label: 'Monday', raw: 'monday' };
+  if (q.includes('tuesday') || q.includes('martes') || q.includes('周二') || q.includes('火曜日') || q.includes('화요일')) return { label: 'Tuesday', raw: 'tuesday' };
+  if (q.includes('wednesday') || q.includes('miyerkules') || q.includes('周三') || q.includes('水曜日') || q.includes('수요일')) return { label: 'Wednesday', raw: 'wednesday' };
+  if (q.includes('thursday') || q.includes('huwebes') || q.includes('周四') || q.includes('木曜日') || q.includes('목요일')) return { label: 'Thursday', raw: 'thursday' };
+  if (q.includes('friday') || q.includes('biyernes') || q.includes('周五') || q.includes('金曜日') || q.includes('금요일')) return { label: 'Friday', raw: 'friday' };
+
+  // Next week / weekday
+  if (q.includes('next week') || q.includes('susunod na linggo') || q.includes('sunod semana') || q.includes('下周') || q.includes('la próxima semana') || q.includes('来週') || q.includes('다음 주')) {
+    return { label: 'Next Week', raw: 'next_week' };
+  }
+  if (q.includes('weekday') || q.includes('karaniwang araw') || q.includes('工作日') || q.includes('平日') || q.includes('평일')) {
+    return { label: 'Weekday Slot', raw: 'weekday' };
+  }
+
+  // Morning / Afternoon only
+  if (q.includes('morning') || q.includes('umaga') || q.includes('buntag') || q.includes('aga') || q.includes('上午') || q.includes('午前') || q.includes('오전') || q.includes('por la mañana')) {
+    return { label: 'Morning Slot', raw: 'morning' };
+  }
+  if (q.includes('afternoon') || q.includes('hapon') || q.includes('下午') || q.includes('午後') || q.includes('오후') || q.includes('por la tarde')) {
+    return { label: 'Afternoon Slot', raw: 'afternoon' };
+  }
+
+  // Specific time formats e.g. "10am", "2pm", "10:00"
+  const timeMatch = q.match(/\b([1-9]|1[0-2])(?::([0-5][0-9]))?\s*(am|pm)\b/i);
+  if (timeMatch) {
+    return { label: timeMatch[0].toUpperCase(), raw: timeMatch[0].toLowerCase() };
+  }
+
+  return null;
+}
+
+/**
+ * Detects color names mentioned in text
+ */
+export function detectColorInText(rawQuery: string): string | undefined {
+  const q = rawQuery.trim().toLowerCase();
+
+  const colors = [
+    { name: 'Pink', match: ['pink', 'rosas', '粉色', '粉红', 'rosa', 'ピンク', '핑크'] },
+    { name: 'Red', match: ['crimson red', 'red', 'pula', 'rojo', '红色', '赤', '빨강'] },
+    { name: 'Blue', match: ['vinfast blue', 'light blue', 'blue', 'asul', 'azul', '蓝色', '青', '파랑'] },
+    { name: 'Green', match: ['urban mint', 'green', 'berde', 'verde', '绿色', '緑', '초록'] },
+    { name: 'White', match: ['brahminy white', 'infinity blanc', 'white', 'puti', 'blanco', '白色', '白', '화이트', '하양'] },
+    { name: 'Grey', match: ['crimson grey', 'zenith grey', 'grey', 'gray', 'kulay abo', 'gris', '灰色', 'グレー', '회색'] },
+    { name: 'Yellow', match: ['yellow', 'dilaw', 'amarillo', '黄色', '黄色い', '노랑'] },
+    { name: 'Purple', match: ['purple', 'violet', 'lila', 'ube', 'morado', '紫色', '紫', '보라'] },
+    { name: 'Black', match: ['jet black', 'black', 'itim', 'negro', '黑色', '黒', '블랙', '검정'] },
+    { name: 'Silver', match: ['silver', 'pilak', 'plata', '银色', 'シルバー', '실버'] },
+  ];
+
+  for (const c of colors) {
+    if (c.match.some(m => q.includes(m))) return c.name;
+  }
+
+  return undefined;
+}
+
+/**
+ * Classifies the intent of the assistant's previous closing question
+ */
+export function classifyLastQuestion(
+  lastQuestion?: string,
+  lastTopic?: string,
+  lastText?: string
+): 'test_drive' | 'color' | 'schedule' | 'dealer' | 'general' {
+  const combined = `${lastQuestion || ''} ${lastTopic || ''} ${lastText || ''}`.toLowerCase();
+
+  if (
+    combined.includes('color') ||
+    combined.includes('kulay') ||
+    combined.includes('kolor') ||
+    combined.includes('paint') ||
+    combined.includes('颜色') ||
+    combined.includes('色')
+  ) {
+    if (combined.includes('which of these colors') || combined.includes('aling kulay') || combined.includes('unsa nga kolor')) {
+      return 'color';
+    }
+  }
+
+  if (
+    combined.includes('morning or afternoon') ||
+    combined.includes('which day') ||
+    combined.includes('aling araw') ||
+    combined.includes('unsa nga adlaw') ||
+    combined.includes('哪一天') ||
+    combined.includes('上午还是下午') ||
+    combined.includes('weekend')
+  ) {
+    return 'schedule';
+  }
+
+  if (
+    combined.includes('which showroom') ||
+    combined.includes('aling showroom') ||
+    combined.includes('asa nga showroom') ||
+    combined.includes('哪家展厅') ||
+    combined.includes('concesionario')
+  ) {
+    return 'dealer';
+  }
+
+  if (
+    combined.includes('test drive') ||
+    combined.includes('schedule') ||
+    combined.includes('reserve') ||
+    combined.includes('subukan') ||
+    combined.includes('masulayan') ||
+    combined.includes('试驾') ||
+    combined.includes('prueba') ||
+    combined.includes('quotation') ||
+    combined.includes('pre-approval') ||
+    combined.includes('hulog') ||
+    combined.includes('financing') ||
+    lastTopic === 'installment' ||
+    lastTopic === 'test_drive'
+  ) {
+    return 'test_drive';
+  }
+
+  return 'general';
+}
+
+/**
+ * Handles direct contextual answers to the assistant's previous question
+ * (e.g. user answering "yes", "sure", "no", "tomorrow", "BGC", or selecting a color)
+ */
+export function handleContextualFollowup(
+  rawQuery: string,
+  context: ConversationContext,
+  lang: string
+): BrainResponse | null {
+  const hasHistory = context.totalTurns > 0 || !!context.lastClosingQuestion || !!context.lastAssistantText;
+  if (!hasHistory) return null;
+
+  const isAff = isAffirmative(rawQuery);
+  const isNeg = isNegative(rawQuery);
+  const dateTime = detectDateTimeInText(rawQuery);
+  const dealerMatch = findNearestDealer(rawQuery);
+  const colorMatch = detectColorInText(rawQuery);
+
+  const activeModel = context.lastModel || 'VF 3';
+  const activeModelId = context.lastModelId || 'vf-3';
+  const activeDealer = dealerMatch || context.lastDealer;
+
+  const isTagalog = lang === 'PH';
+  const isBisaya = lang === 'CEB';
+  const isIlonggo = lang === 'ILO';
+  const isChinese = lang === 'ZH';
+  const isSpanish = lang === 'ES';
+  const isJapanese = lang === 'JA';
+  const isKorean = lang === 'KO';
+
+  // -------------------------------------------------------------------------
+  // 1. AFFIRMATIVE ANSWER ("yes", "sure", "oo", "sige", "pwede", "book it", etc.)
+  // -------------------------------------------------------------------------
+  if (isAff) {
+    const dName = activeDealer ? activeDealer.name : '';
+    const dAddr = activeDealer ? activeDealer.address : '';
+    const dPhone = activeDealer ? activeDealer.hotline : '';
+    const timeLabel = dateTime ? dateTime.label : '';
+
+    // Quick Actions
+    const quickActions: BrainResponse['quickActions'] = [
+      {
+        label: isTagalog
+          ? `I-book ang ${activeModel} VIP Test Drive`
+          : isBisaya
+          ? `Mag-book og ${activeModel} VIP Test Drive`
+          : isChinese
+          ? `预约 ${activeModel} VIP 试驾`
+          : `Book ${activeModel} VIP Test Drive`,
+        action: 'book_test_drive',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog
+          ? 'Kwentahin ang Buwanang Hulog'
+          : isBisaya
+          ? 'Kwentahon ang Hulog'
+          : isChinese
+          ? '测算官方分期月供'
+          : 'Calculate Monthly Payment',
+        action: 'calculate_model',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog
+          ? 'Tingnan ang Showroom'
+          : isBisaya
+          ? 'Tan-awa ang Showroom'
+          : isChinese
+          ? '查看展厅详情'
+          : 'View Showroom Details',
+        action: 'view_dealer',
+        payload: activeDealer?.id,
+      },
+    ];
+
+    // TAGALOG / FILIPINO
+    if (isTagalog) {
+      let closing = `Aling VinFast showroom ang pinaka-maginhawa para sa iyo (hal. BGC, Alabang, North EDSA, Cebu, Davao), at anong araw o oras ang iyong nais ngayong linggo?`;
+      if (activeDealer && !dateTime) {
+        closing = `Nais mo ba ng morning o afternoon slot ngayong linggo para sa iyong VIP test drive sa ${dName}?`;
+      } else if (dateTime && !activeDealer) {
+        closing = `Aling VinFast showroom ang nais mong puntahan para sa iyong test drive sa ${timeLabel}?`;
+      } else if (activeDealer && dateTime) {
+        closing = `Gusto mo bang kumpirmahin na natin ang iyong VIP slot para sa ${activeModel} sa ${dName} sa darating na ${timeLabel}?`;
+      }
+
+      return {
+        text: [
+          'RESERBASYON PARA SA VIP TEST DRIVE AT QUOTATION',
+          '',
+          `Napakagandang desisyon! Ikagagalak kong ihanda ang iyong libreng VIP test drive para sa ${activeModel} kasama ang opisyal na quotation at mabilisang bank pre-approval.`,
+          '',
+          ...(activeDealer ? [`NAPILING SHOWROOM: ${dName} (${dAddr})`, `HOTLINE: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`ITINAKDANG ORAS O ARAW: ${timeLabel}`, ''] : []),
+          'MGA KASAMA SA IYONG VIP VISIT',
+          '- Dedikadong 30-minutong test drive kasama ang aming sertipikadong VinFast EV Specialist',
+          '- Opisyal na quotation at on-the-spot bank pre-approval computation (BDO, BPI, Metrobank, Security Bank, RCBC, Maybank)',
+          '- Aktwal na demonstrasyon ng bilis ng DC fast charging at infotainment touch display',
+          '- 100% libre at walang anumang obligasyong bumili',
+          '',
+          'MGA DAPAT DALHIN',
+          '- Balidong Philippine Driver\'s License (o International Driving Permit)',
+          '',
+          closing,
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // BISAYA / CEBUANO
+    if (isBisaya) {
+      let closing = `Asa nga VinFast showroom ang pinakaduol kanimo (pananglitan: Cebu Central A.S. Fortuna, Cebu South SRP, Davao, o Manila), ug unsa nga adlaw o oras ang imong gusto karong semanaha?`;
+      if (activeDealer && !dateTime) {
+        closing = `Gusto ba nimo og buntag o hapon nga slot karong semanaha sa atong showroom sa ${dName}?`;
+      } else if (dateTime && !activeDealer) {
+        closing = `Asa nga showroom ang imong gustong bisitahon para sa imong test drive karong ${timeLabel}?`;
+      } else if (activeDealer && dateTime) {
+        closing = `I-confirm na ba nato ang imong VIP test drive slot para sa ${activeModel} sa ${dName} karong ${timeLabel}?`;
+      }
+
+      return {
+        text: [
+          'RESERBASYON SA LIBRENG VIP TEST DRIVE UG QUOTATION',
+          '',
+          `Maayo kaayong desisyon! Nalipay ako nga moandam sa imong libreng VIP test drive para sa ${activeModel} uban sa opisyal nga bank quotation ug pre-approval.`,
+          '',
+          ...(activeDealer ? [`NAPILI NGA SHOWROOM: ${dName} (${dAddr})`, `HOTLINE: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`GUSTO NGA ADLAW / ORAS: ${timeLabel}`, ''] : []),
+          'MGA KASULOD SA IYONG VIP VISIT',
+          '- 30-minutos nga test drive uban sa atong sertipikadong VinFast Product Specialist',
+          '- Opisyal nga quotation ug tabang sa paspas nga bank pre-approval (BDO, BPI, Metrobank, Security Bank, RCBC)',
+          '- Aktwal nga pagsulay sa DC fast charging ug smart touchscreen features',
+          '- 100% libre ug walay bisan unsang bayad o obligasyon',
+          '',
+          'KINAHANGLAN NGA DAD-ON',
+          '- Balidong Driver\'s License',
+          '',
+          closing,
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // ILONGGO / HILIGAYNON
+    if (isIlonggo) {
+      return {
+        text: [
+          'RESERBASYON SANG LIBRE NGA VIP TEST DRIVE KAG QUOTATION',
+          '',
+          `Maayo gid nga desisyon! Malipayon ako nga mag-asikaso sang imo libre nga VIP test drive para sa ${activeModel} upod ang opisyal nga bank quotation kag pre-approval.`,
+          '',
+          ...(activeDealer ? [`NAPILI NGA SHOWROOM: ${dName} (${dAddr})`, `HOTLINE: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`GUSTO NGA ADLAW: ${timeLabel}`, ''] : []),
+          'MGA UPOD SA IMO VIP VISIT',
+          '- 20 tubtob 30 minutos nga test drive upod ang aton certified product specialist',
+          '- Opisyal nga quotation kag madasig nga bank computation sa aton partner banks',
+          '- Pagsulay sang DC fast charging kag smart features',
+          '- 100% libre kag wala sang obligasyon nga magbakal',
+          '',
+          'KINAHANGLAN DAD-ON',
+          '- Valid Driver\'s License',
+          '',
+          'Diin nga VinFast showroom ang mas mahapos para sa imo kadtuan, kag ano nga adlaw ukon oras ang luyag mo subong nga semana?',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // CHINESE (ZH)
+    if (isChinese) {
+      let closing = `请问您希望前往哪家官方展厅（例如 BGC、Alabang、Cebu 或离您最近的展厅），以及本周哪天哪个时段（上午或下午）最方便？`;
+      if (activeDealer && !dateTime) {
+        closing = `请问您想预约本周哪一天的上午还是下午到 ${dName} 试驾？`;
+      } else if (dateTime && !activeDealer) {
+        closing = `请问您希望 ${timeLabel} 前往哪家展厅体验？`;
+      } else if (activeDealer && dateTime) {
+        closing = `需要现在为您锁定 ${timeLabel} 在 ${dName} 的 ${activeModel} VIP 试驾席位吗？`;
+      }
+
+      return {
+        text: [
+          'VIP 专属试驾与金融方案预约确认',
+          '',
+          `太好了！非常荣幸为您安排 ${activeModel} 的专属 VIP 试驾体验以及官方金融分期预审方案。`,
+          '',
+          ...(activeDealer ? [`已选展厅: ${dName} (${dAddr})`, `服务热线: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`预约时间: ${timeLabel}`, ''] : []),
+          'VIP 试驾尊享权益',
+          '- 专属产品专家全程一对一陪同讲解与深度试驾（约 20-30 分钟）',
+          '- 官方分期购车测算与极速银行预审（合作银行：BDO、BPI、Metrobank、Security Bank 等）',
+          '- 现场实测 DC 超级快充与智能车机网联体验',
+          '- 全程 100% 免费，无任何强制消费与购车压力',
+          '',
+          '需携带证件',
+          '- 有效菲律宾驾照（或国际驾照及护照）',
+          '',
+          closing,
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // SPANISH (ES)
+    if (isSpanish) {
+      return {
+        text: [
+          'RESERVA DE PRUEBA DE MANEJO VIP Y COTIZACIÓN OFICIAL',
+          '',
+          `Excelente elección. Con mucho gusto coordinaré su prueba de manejo VIP de cortesía para el ${activeModel}, junto con su cotización formal y pre-aprobación bancaria.`,
+          '',
+          ...(activeDealer ? [`CONCESIONARIO SELECCIONADO: ${dName} (${dAddr})`, `TELÉFONO: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`HORARIO SOLICITADO: ${timeLabel}`, ''] : []),
+          'QUÉ INCLUYE SU EXPERIENCIA VIP',
+          '- Prueba de manejo guiada de 20 a 30 minutos con un especialista certificado de VinFast',
+          '- Cotización formal y cálculo de pre-aprobación bancaria en el acto',
+          '- Demostración en vivo de carga rápida DC y funciones inteligentes',
+          '- 100% gratuita y sin ningún compromiso de compra',
+          '',
+          'REQUISITO',
+          '- Licencia de conducir válida',
+          '',
+          '¿Qué concesionario le resulta más conveniente (por ejemplo, BGC, Alabang, Cebu o Davao) y qué día u horario prefiere para su visita?',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // JAPANESE (JA)
+    if (isJapanese) {
+      return {
+        text: [
+          'VIP試乗・公式お見積り予約受付',
+          '',
+          `かしこまりました。${activeModel} の無料VIP試乗および提携銀行ローンの事前審査・公式お見積りの手配を喜んで承ります。`,
+          '',
+          ...(activeDealer ? [`指定ショールーム: ${dName} (${dAddr})`, `お問い合わせ窓口: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`ご希望日時: ${timeLabel}`, ''] : []),
+          'VIP試乗の特典内容',
+          '- 専任EVスペシャリストによる個別アテンドと20〜30分の体験試乗',
+          '- 公式お見積り作成および迅速な銀行ローン事前審査のご案内',
+          '- DC急速充電および先進インフォテインメント機能の実演',
+          '- 完全無料・ご購入の義務は一切ございません',
+          '',
+          'ご持参いただくもの',
+          '- 有効な運転免許証（または国際運転免許証）',
+          '',
+          'ご都合のよろしいショールーム（BGC、アラバン、セブなど）と、ご希望の日時（午前・午後など）をお知らせいただけますでしょうか？',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // KOREAN (KO)
+    if (isKorean) {
+      return {
+        text: [
+          'VIP 무료 시승 및 공식 견적 예약 접수',
+          '',
+          `탁월한 선택이십니다! ${activeModel} 전용 무료 VIP 시승과 공식 금융 견적 및 은행 대출 사전 심사 안내를 도와드리겠습니다.`,
+          '',
+          ...(activeDealer ? [`선택 쇼룸: ${dName} (${dAddr})`, `전화번호: ${dPhone}`, ''] : []),
+          ...(dateTime ? [`희망 일정: ${timeLabel}`, ''] : []),
+          'VIP 시승 혜택',
+          '- 전담 EV 스페셜리스트의 맞춤 안내 및 20~30분 심층 시승',
+          '- 공식 견적서 발행 및 빠른 은행 제휴 대출 사전 심사 지원',
+          '- DC 급속 충전 및 스마트 인포테인먼트 기능 시연',
+          '- 100% 무료이며 구매 의무는 전혀 없습니다',
+          '',
+          '준비물',
+          '- 유효한 운전면허증 (또는 국제운전면허증)',
+          '',
+          '방문하시기 편한 쇼룸(BGC, 알라방, 세부, 다바오 등)과 이번 주 원하시는 요일 및 시간대(오전/오후)를 말씀해 주시겠습니까?',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    // DEFAULT ENGLISH (EN)
+    let closing = `Which VinFast showroom is most convenient for you (e.g., BGC, Alabang, North EDSA, Cebu, Davao), and what day or time works best for your visit?`;
+    if (activeDealer && !dateTime) {
+      closing = `Would you prefer a morning or afternoon slot this week for your visit to ${dName}?`;
+    } else if (dateTime && !activeDealer) {
+      closing = `Which showroom would you like to visit for your ${timeLabel} test drive?`;
+    } else if (activeDealer && dateTime) {
+      closing = `Shall I finalize your VIP reservation for ${activeModel} at ${dName} for ${timeLabel}?`;
+    }
+
+    return {
+      text: [
+        'COMPLIMENTARY VIP TEST DRIVE & QUOTATION RESERVATION',
+        '',
+        `Excellent choice! I would be delighted to arrange your complimentary VIP test drive for the ${activeModel} along with your formal bank quotation.`,
+        '',
+        ...(activeDealer ? [`SELECTED SHOWROOM: ${dName} (${dAddr})`, `HOTLINE: ${dPhone}`, ''] : []),
+        ...(dateTime ? [`REQUESTED SCHEDULE: ${timeLabel}`, ''] : []),
+        'WHAT IS INCLUDED IN YOUR VIP SESSION',
+        `- Dedicated 30-minute test drive with a certified VinFast EV Specialist`,
+        `- Official quotation with on-site bank pre-approval computation (BDO, BPI, Metrobank, Security Bank, RCBC, Maybank)`,
+        `- Demonstration of key EV features, DC fast charging, and smart infotainment`,
+        `- 100% complimentary with zero purchase obligation`,
+        '',
+        'WHAT TO BRING',
+        `- Valid Philippine Driver's License (or International Driving Permit)`,
+        '',
+        closing,
+      ].join('\n'),
+      mediaUrls: [],
+      suggestedDealer: activeDealer,
+      quickActions,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. NEGATIVE ANSWER ("no", "not now", "hindi", "dili", "wag muna", etc.)
+  // -------------------------------------------------------------------------
+  if (isNeg) {
+    const quickActions: BrainResponse['quickActions'] = [
+      {
+        label: isTagalog ? `Suriin ang ${activeModel}` : `Explore ${activeModel}`,
+        action: 'calculate_model',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog ? 'Kwentahin ang Buwanan' : 'Monthly Calculator',
+        action: 'calculate_model',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog ? 'Tingnan ang Showrooms' : 'View Showrooms',
+        action: 'view_dealer',
+        payload: activeDealer?.id,
+      },
+    ];
+
+    if (isTagalog) {
+      return {
+        text: [
+          'WALANG ANUMANG PROBLEMA',
+          '',
+          'Salamat sa pagpapaalam! Walang anumang pagmamadali o pressure sa VinFast.',
+          '',
+          'MGA MAAARI KONG MAITULONG SA IYONG SARILING ORAS',
+          `- Pagsusuri ng mga features, safety ratings, at driving range ng ${activeModel}`,
+          '- Pagkwenta ng magagaan na buwanang hulog at flexible down payment terms',
+          '- Pagkukumpara ng matitipid sa kuryente kumpara sa gasolina (hanggang 80% tipid)',
+          '- Pagtingin sa mga kulay at 29 na showrooms sa buong bansa',
+          '',
+          `Handa akong sumagot sa anumang oras na mayroon kang katanungan. Aling detalye o modelo ang nais mong suriin sa ngayon?`,
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    if (isBisaya) {
+      return {
+        text: [
+          'WAY PROBLEMA - WALAY PAMUGOS',
+          '',
+          'Salamat sa pagpahibalo! Walay pagdali o obligasyon.',
+          '',
+          'MGA MAKATABANG SA IMONG SARILING ORAS',
+          `- Pagtan-aw sa specs, safety features, ug driving range sa ${activeModel}`,
+          '- Pagkwenta sa binulan nga hulog ug flexible down payment terms',
+          '- Pagtan-aw sa madaginot sa kuryente kontra sa gasolina',
+          '- Pagpili sa mga kolor ug pagbisita sa 29 ka showrooms sa Pilipinas',
+          '',
+          'Andam ko motabang kanimo kanunay. Unsa nga bahin sa VinFast ang gusto nimong masayran sunod?',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    if (isChinese) {
+      return {
+        text: [
+          '完全理解 - 您可以随时随心了解',
+          '',
+          '感谢您的告知！我们完全理解，没有任何催促与购车压力。',
+          '',
+          '您可以按自己的节奏了解以下内容',
+          `- 查看 ${activeModel} 的官方配置、安全评级与续航表现`,
+          '- 自定义测算分期首付比例与低月供方案',
+          '- 查看电费相比燃油车高达 80% 的显著用车省钱对比',
+          '- 鉴赏 9 款车身外观配色以及全国 29 家展厅网络',
+          '',
+          '当您准备好时，我随时在此为您服务。请问您接下来想先了解哪款车型或配置呢？',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    return {
+      text: [
+        'UNDERSTOOD - NO PRESSURE AT ALL',
+        '',
+        'Thank you for letting me know! There is absolutely no rush or pressure.',
+        '',
+        'HOW I CAN ASSIST YOU AT YOUR OWN PACE',
+        `- Explore vehicle specifications, safety ratings, and driving range for the ${activeModel}`,
+        '- Compute flexible monthly installment plans and down payment terms',
+        '- Review real-world energy savings (up to 80% savings versus gasoline)',
+        '- View our exterior color gallery and 29 showroom locations nationwide',
+        '',
+        'Whenever you are ready, I am here to help. Which model or feature would you like to explore next?',
+      ].join('\n'),
+      mediaUrls: [],
+      suggestedDealer: activeDealer,
+      quickActions,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. DATE / TIME PREFERENCE ONLY ("tomorrow morning", "this saturday", "bukas")
+  // -------------------------------------------------------------------------
+  if (dateTime && rawQuery.trim().length <= 40) {
+    const dName = activeDealer ? activeDealer.name : '';
+    const quickActions: BrainResponse['quickActions'] = [
+      {
+        label: isTagalog ? `I-book sa ${dateTime.label}` : `Book for ${dateTime.label}`,
+        action: 'book_test_drive',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog ? 'Maghanap ng Showroom' : 'Find Showroom',
+        action: 'view_dealer',
+        payload: activeDealer?.id,
+      },
+    ];
+
+    if (isTagalog) {
+      const closing = activeDealer
+        ? `Gusto mo bang kumpirmahin na natin ang slot na ito sa ${dName} para sa iyong ${activeModel} test drive?`
+        : `Aling VinFast showroom ang pinaka-malapit sa iyo (hal. BGC, Alabang, North EDSA, Cebu, Davao)?`;
+
+      return {
+        text: [
+          `NAITALA ANG IYONG SCHEDULE: ${dateTime.label.toUpperCase()}`,
+          '',
+          `Salamat! Siguradong maihahanda namin ang iyong schedule sa ${dateTime.label} para sa libreng VIP test drive ng ${activeModel}.`,
+          '',
+          ...(activeDealer ? [`SHOWROOM: ${activeDealer.name} (${activeDealer.address})`, ''] : []),
+          'ANG AMING IHAHANDA PARA SA IYO',
+          `- Dedikadong demo unit ng ${activeModel} na fully charged at malamig ang aircon`,
+          '- 1-on-1 walkthrough kasama ang aming sertipikadong Product Specialist',
+          '- Naka-print na bank financing quotation at tulong sa mabilisang pre-approval',
+          '- Libreng kape at refreshments sa aming customer lounge',
+          '',
+          'MGA DAPAT DALHIN',
+          '- Balidong Driver\'s License',
+          '',
+          closing,
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+
+    const closing = activeDealer
+      ? `Shall I finalize this VIP booking for ${dateTime.label} at ${dName}?`
+      : `Which VinFast showroom is most accessible for you (e.g. BGC, Alabang, North EDSA, Cebu, Davao)?`;
+
+    return {
+      text: [
+        `PREFERRED SCHEDULE NOTED: ${dateTime.label.toUpperCase()}`,
+        '',
+        `Thank you! We can definitely accommodate your schedule on ${dateTime.label} for your complimentary VIP test drive in the ${activeModel}.`,
+        '',
+        ...(activeDealer ? [`SHOWROOM: ${activeDealer.name} (${activeDealer.address})`, ''] : []),
+        'WHAT WE WILL PREPARE FOR YOUR ARRIVAL',
+        `- Dedicated ${activeModel} demo unit fully charged and climate-controlled`,
+        '- 1-on-1 walkthrough with a certified EV Product Specialist',
+        '- Printed bank financing quotation with on-site pre-approval options',
+        '- Complimentary refreshments at our customer lounge',
+        '',
+        'WHAT TO BRING',
+        '- Valid Philippine Driver\'s License (or International Driving Permit)',
+        '',
+        closing,
+      ].join('\n'),
+      mediaUrls: [],
+      suggestedDealer: activeDealer,
+      quickActions,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. DEALER / SHOWROOM PREFERENCE ONLY ("BGC", "Cebu", "sa Alabang")
+  // -------------------------------------------------------------------------
+  if (dealerMatch && rawQuery.trim().length <= 40) {
+    const quickActions: BrainResponse['quickActions'] = [
+      {
+        label: isTagalog ? `I-book sa ${dealerMatch.name}` : `Book at ${dealerMatch.name}`,
+        action: 'book_test_drive',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog ? 'Kwentahin ang Buwanan' : 'Calculate Monthly',
+        action: 'calculate_model',
+        payload: activeModelId,
+      },
+      {
+        label: isTagalog ? 'Tawagan ang Showroom' : 'Call Showroom',
+        action: 'call_dealer',
+        payload: dealerMatch.id,
+      },
+    ];
+
+    if (isTagalog) {
+      return {
+        text: [
+          `NAPILING SHOWROOM: ${dealerMatch.name.toUpperCase()}`,
+          '',
+          `Magandang pagpipilian! Naitala na namin ang iyong napiling showroom sa ${dealerMatch.name}.`,
+          '',
+          'MGA DETALYE NG SHOWROOM',
+          `- Adres: ${dealerMatch.address}`,
+          '- Oras ng Operasyon: Lunes hanggang Linggo, 8:30 AM - 6:00 PM',
+          `- Hotline: ${dealerMatch.hotline}`,
+          `- Handa na mga Demo Units: ${activeModel}, VF 5 Plus, VF 7`,
+          '',
+          `VIP SERBISYO SA ${dealerMatch.name.toUpperCase()}`,
+          '- Dedikadong test drive kasama ang aming certified EV specialist',
+          '- Opisyal na quotation at instant bank pre-approval assistance',
+          '- Customer lounge na may libreng inumin at meryenda',
+          '',
+          'Aling araw ngayong linggo (hal. ngayong Sabado o karaniwang araw) at oras (umaga o hapon) ang pinaka-maginhawa para sa iyong pagbisita?',
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: dealerMatch,
+        quickActions,
+      };
+    }
+
+    return {
+      text: [
+        `SHOWROOM SELECTED: ${dealerMatch.name.toUpperCase()}`,
+        '',
+        `Great choice! We have noted your preferred showroom at ${dealerMatch.name}.`,
+        '',
+        'SHOWROOM DETAILS',
+        `- Address: ${dealerMatch.address}`,
+        '- Operating Hours: Monday to Sunday, 8:30 AM - 6:00 PM',
+        `- Hotline: ${dealerMatch.hotline}`,
+        `- Available Demo Vehicles: ${activeModel}, VF 5 Plus, VF 7`,
+        '',
+        `VIP EXPERIENCE AT ${dealerMatch.name.toUpperCase()}`,
+        '- Dedicated 30-minute test drive with a certified EV specialist',
+        '- Official quotation and instant bank pre-approval computation',
+        '- Customer lounge with complimentary refreshments',
+        '',
+        'Which day this week (e.g., this Saturday or a weekday) and time (morning or afternoon) would you prefer for your VIP test drive?',
+      ].join('\n'),
+      mediaUrls: [],
+      suggestedDealer: dealerMatch,
+      quickActions,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 5. COLOR PREFERENCE ONLY ("pink", "red", "white", "yung kulay pink")
+  // -------------------------------------------------------------------------
+  if (colorMatch && rawQuery.trim().length <= 30) {
+    const qClass = classifyLastQuestion(context.lastClosingQuestion, context.lastTopic, context.lastAssistantText);
+    if (qClass === 'color' || context.lastTopic === 'colors' || context.lastTopic === 'photos') {
+      const quickActions: BrainResponse['quickActions'] = [
+        {
+          label: isTagalog ? `I-test Drive ang Kulay ${colorMatch}` : `Test Drive ${colorMatch} Finish`,
+          action: 'book_test_drive',
+          payload: activeModelId,
+        },
+        {
+          label: isTagalog ? 'Kwentahin ang Buwanan' : 'Calculate Monthly',
+          action: 'calculate_model',
+          payload: activeModelId,
+        },
+      ];
+
+      if (isTagalog) {
+        return {
+          text: [
+            `NAPILING KULAY: ${colorMatch.toUpperCase()} ${activeModel.toUpperCase()}`,
+            '',
+            `Tunay na napakaganda at kapansin-pansin ng kulay ${colorMatch} sa ${activeModel}!`,
+            '',
+            'MGA KATANGIAN NG FINISH',
+            '- Matibay na multi-coat factory paint finish',
+            '- Magandang contrast dual-tone roof styling option',
+            '- Protektado laban sa matinding init ng araw at ulan sa Pilipinas',
+            '',
+            `Maaari naming ihanda ang ${colorMatch} ${activeModel} para sa iyong pagdating. Nais mo bang mag-schedule ng libreng VIP test drive ngayong linggo?`,
+          ].join('\n'),
+          mediaUrls: [],
+          suggestedDealer: activeDealer,
+          quickActions,
+        };
+      }
+
+      return {
+        text: [
+          `PREFERRED COLOR: ${colorMatch.toUpperCase()} ${activeModel.toUpperCase()}`,
+          '',
+          `The ${colorMatch} finish is an exceptional choice for the ${activeModel}!`,
+          '',
+          'FINISH HIGHLIGHTS',
+          '- High-durability multi-coat factory finish',
+          '- Dual-tone contrast roof styling option',
+          '- High UV and scratch resistance engineered for Philippine weather',
+          '',
+          `We can ensure our team prepares a ${colorMatch} ${activeModel} for your arrival. Would you like to schedule your complimentary VIP test drive this week?`,
+        ].join('\n'),
+        mediaUrls: [],
+        suggestedDealer: activeDealer,
+        quickActions,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Detects whether a query is ambiguous, confusing, or non-committal
  * so the AI can provide focused clarification without dumping unrelated text.
  */
 export function isConfusingOrAmbiguous(rawQuery: string): boolean {
+  // If the query is an affirmative, negative, schedule date/time, or dealer response, it is NOT confusing/ambiguous
+  if (
+    isAffirmative(rawQuery) ||
+    isNegative(rawQuery) ||
+    detectDateTimeInText(rawQuery) ||
+    findNearestDealer(rawQuery) ||
+    detectColorInText(rawQuery)
+  ) {
+    return false;
+  }
+
   const q = rawQuery.trim().toLowerCase();
 
   const hasDomainKeyword =
@@ -514,21 +1476,21 @@ export function isConfusingOrAmbiguous(rawQuery: string): boolean {
   if (hasDomainKeyword) return false;
 
   const ambiguousPhrases = [
-    'ok', 'okay', 'k', 'kk', 'sure', 'yes', 'no', 'maybe', 'huh', 'huh?', 'what', 'what?',
-    'how', 'how?', 'tell me more', 'hmm', 'hmmm', 'why', 'why?', 'idk', 'what do you mean',
-    'not sure', 'confused', 'i don\'t know', 'what else', 'and then', 'so?', 'so what',
-    'ano?', 'ano', 'ha?', 'ano po?', 'bakit?', 'sige', 'sige nga', 'talaga?', 'e ano?',
-    'paano?', 'paano ba?', 'ewan', 'di ko alam', 'wala lang', 'pwede ba?', 'anong meron',
+    'huh', 'huh?', 'what', 'what?', 'how', 'how?', 'tell me more', 'hmm', 'hmmm',
+    'why', 'why?', 'idk', 'what do you mean', 'not sure', 'confused', 'i don\'t know',
+    'what else', 'and then', 'so?', 'so what',
+    'ano?', 'ano', 'ha?', 'ano po?', 'bakit?', 'talaga?', 'e ano?',
+    'paano?', 'paano ba?', 'ewan', 'di ko alam', 'wala lang', 'anong meron',
     'unsa?', 'unsa man?', 'ngano?', 'mao ba?', 'ambot', 'unya?',
     'ano?', 'nga-a?', 'ti ano?',
-    '什么?', '什么', '怎么说', '然後呢', '然后呢', '不懂', '啊?', '哦', '好的', '行吧', '不知道',
-    'que?', '¿qué?', 'como?', '¿cómo?', 'no se', 'bueno', 'vale',
-    'どういうこと?', 'え？', '何？', 'うん', 'わからない',
-    '뭐?', '어떤 거?', '글쎄', '몰라', '네', '어떻게?',
+    '什么?', '什么', '怎么说', '然後呢', '然后呢', '不懂', '啊?', '行吧', '不知道',
+    'que?', '¿qué?', 'como?', '¿cómo?', 'no se',
+    'どういうこと?', 'え？', '何？', 'わからない',
+    '뭐?', '어떤 거?', '글쎄', '몰라', '어떻게?',
   ];
 
   if (ambiguousPhrases.includes(q)) return true;
-  if (/^[?!\.\s,;:-]+$/.test(q)) return true;
+  if (/^[!?.\s,;:-]+$/.test(q)) return true;
   if (q.length <= 3 && !/^[0-9]+$/.test(q)) return true;
 
   return false;
@@ -1804,6 +2766,16 @@ export function generateSalesResponse(
 
   // 2. Multilingual detection & routing
   const { lang, isExplicitSwitch } = detectLanguage(rawQuery, language);
+
+  // 3. Handle direct contextual answers to the assistant's previous closing question or topic
+  const contextualFollowup = handleContextualFollowup(rawQuery, context, lang);
+  if (contextualFollowup) {
+    return {
+      ...contextualFollowup,
+      detectedLanguage: lang,
+    };
+  }
+
   const multiResponse = generateMultilingualResponse(rawQuery, lang, isExplicitSwitch, context);
   if (multiResponse) {
     return {

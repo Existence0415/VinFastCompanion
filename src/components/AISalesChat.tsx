@@ -25,8 +25,8 @@ interface AISalesChatProps {
 export const AISalesChat = ({
   isOpen,
   onClose,
-  onBookTestDriveWithDealer: _onBookTestDriveWithDealer,
-  onSelectModel: _onSelectModel,
+  onBookTestDriveWithDealer,
+  onSelectModel,
   initialPrompt,
   onClearInitialPrompt,
   language,
@@ -376,6 +376,35 @@ export const AISalesChat = ({
                             <span>{msg.suggestedDealer.hotline}</span>
                           </a>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Quick Action Buttons (if applicable) */}
+                    {msg.quickActions && msg.quickActions.length > 0 && (
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap gap-2">
+                        {msg.quickActions.map((qa, qIdx) => (
+                          <button
+                            key={qIdx}
+                            type="button"
+                            onClick={() => {
+                              if (qa.action === 'book_test_drive') {
+                                onClose();
+                                onBookTestDriveWithDealer?.(msg.suggestedDealer?.id, qa.payload);
+                              } else if (qa.action === 'calculate_model') {
+                                onClose();
+                                onSelectModel?.(qa.payload || 'vf-3');
+                              } else if (qa.action === 'call_dealer' && msg.suggestedDealer?.hotlineRaw) {
+                                window.location.href = `tel:${msg.suggestedDealer.hotlineRaw}`;
+                              } else {
+                                handleSendMessage(qa.label);
+                              }
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 hover:text-white text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                          >
+                            <span>{qa.label}</span>
+                            <ChevronRight className="w-3 h-3 text-blue-400" />
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
