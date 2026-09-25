@@ -18,11 +18,6 @@ export const Hero: React.FC<HeroProps> = ({ onOpenTestDrive, language }) => {
 
       <div className="w-full max-w-full lg:max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
         <div className="text-center w-full max-w-full lg:max-w-4xl mx-auto">
-          {/* Top Pill / Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-blue-950/70 border border-blue-800/60 text-blue-300 text-[11px] sm:text-sm font-medium mb-4 sm:mb-6 shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>{t.pill}</span>
-          </div>
 
           {/* Headline */}
           <h1 className="text-2xl xs:text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.15] sm:leading-[1.1] mb-4 sm:mb-6">
